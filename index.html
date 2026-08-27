@@ -450,7 +450,12 @@ nav.tabbar .addbtn{
     <div class="card">
       <h2>📷 拍照辨識（Google Gemini）</h2>
       <div class="field">
-        <label>API 金鑰（只存在這支手機）</label>
+        <label>中繼站網址（建議，填了就不用下面的金鑰）</label>
+        <input type="text" id="setProxy" placeholder="https://xxx.workers.dev">
+        <div class="hint">直接連 Google 常被網路環境擋住。架一個免費中繼站最穩，教學看 README 的「附錄」。</div>
+      </div>
+      <div class="field">
+        <label>或：API 金鑰（直接連 Google，只存這支手機）</label>
         <input type="password" id="setKey" placeholder="貼上 AI Studio 的 API key">
       </div>
       <div class="field">
@@ -461,9 +466,9 @@ nav.tabbar .addbtn{
           <option value="gemini-2.5-flash">gemini-2.5-flash（舊版，可能無法用）</option>
         </select>
       </div>
-      <button class="btn-ghost" id="btnTestKey">測試金鑰是否可用</button>
+      <button class="btn-ghost" id="btnTestKey">測試連線是否可用</button>
       <div id="keyTestResult" class="hint" style="white-space:pre-wrap"></div>
-      <div class="hint">申請教學請看專案的 README。金鑰不會上傳，只存在瀏覽器。</div>
+      <div class="hint">金鑰 / 網址只存在這個瀏覽器，不會上傳。</div>
     </div>
 
     <div class="card">
@@ -559,6 +564,7 @@ const DEFAULT_STATE = {
   settings:{
     rate:0.21,
     apiKey:"",
+    proxyUrl:"",
     model:"gemini-3.7-flash",
     categories:[
       {emoji:"🍜",name:"餐飲"},{emoji:"🚃",name:"交通"},{emoji:"🏨",name:"住宿"},
@@ -1060,8 +1066,8 @@ const RECEIPT_PROMPT = `你是日本旅遊記帳 App 的收據解析器。圖片
 規則：金額為日圓整數、不要小數。略過「チャージ/入金/加值」這類儲值紀錄(那不是消費)。只回傳合法 JSON。`;
 
 function startPhoto(){
-  if(!state.settings.apiKey){
-    toast("請先到設定貼上 Gemini API 金鑰");
+  if(!state.settings.apiKey && !state.settings.proxyUrl){
+    toast("請先到設定填中繼站網址或 API 金鑰");
     closeModal(); showTab("set"); return;
   }
   $("#photoInput").value = "";
@@ -1157,10 +1163,17 @@ async function fetchTimeout(url, opts={}, ms=25000){
   finally{ clearTimeout(timer); }
 }
 
-async function callGemini(base64jpeg){
-  const key = state.settings.apiKey;
+// 決定要打中繼站還是直接連 Google
+function geminiTarget(){
+  const proxy = (state.settings.proxyUrl||"").trim();
   const model = state.settings.model || "gemini-3.7-flash";
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
+  if(proxy) return { url: proxy, viaProxy:true, model };
+  const key = state.settings.apiKey;
+  return { url:`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, viaProxy:false, model };
+}
+
+async function callGemini(base64jpeg){
+  const tgt = geminiTarget();
   const body = {
     contents:[{parts:[
       {text: RECEIPT_PROMPT},
@@ -1168,6 +1181,8 @@ async function callGemini(base64jpeg){
     ]}],
     generationConfig:{ temperature:0, responseMimeType:"application/json" }
   };
+  if(tgt.viaProxy) body.model = tgt.model;
+  const url = tgt.url;
   let lastErr;
   for(let attempt=1; attempt<=2; attempt++){
     try{
@@ -1441,6 +1456,8 @@ function renderSettings(){
   bindNum("#setBudgetTotal","budgetTotal");
   bindNum("#setBudgetDaily","budgetDaily");
   $("#setKey").onchange = ()=>{ s.apiKey = $("#setKey").value.trim(); save(); };
+  $("#setProxy").value = s.proxyUrl || "";
+  $("#setProxy").onchange = ()=>{ s.proxyUrl = $("#setProxy").value.trim().replace(/\/$/,""); save(); };
   $("#setModel").onchange = ()=>{ s.model = $("#setModel").value; save(); };
   $("#setDefPayer").onchange = ()=>{ s.defaultPayer = $("#setDefPayer").value; save(); };
   $("#setDefPayment").onchange = ()=>{ s.defaultPayment = $("#setDefPayment").value; save(); };
@@ -1490,44 +1507,46 @@ $("#btnRecalc").onclick = ()=>{
   save(); toast("已重算");
 };
 $("#btnTestKey").onclick = async ()=>{
-  const key = $("#setKey").value.trim();
   const out = $("#keyTestResult");
-  if(!key){ out.textContent = "請先貼上金鑰"; return; }
-  state.settings.apiKey = key; save();
+  const proxy = $("#setProxy").value.trim().replace(/\/$/,"");
+  const key = $("#setKey").value.trim();
+  state.settings.proxyUrl = proxy; state.settings.apiKey = key; save();
+  if(!proxy && !key){ out.textContent = "請先填中繼站網址，或 API 金鑰"; return; }
   $("#btnTestKey").disabled = true;
   $("#btnTestKey").textContent = "測試中…";
-  out.textContent = "測試中，最多等 20 秒…";
+  out.textContent = "測試中，最多等 30 秒…";
+  const model = state.settings.model || "gemini-3.7-flash";
+  const pingBody = {contents:[{parts:[{text:"ping"}]}]};
   try{
-    // 第一關：列出模型（GET，測金鑰有效）
-    const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}&pageSize=1`;
-    const r1 = await fetchTimeout(listUrl, {method:"GET"}, 20000);
-    const t1 = await r1.text();
-    if(!r1.ok){
-      let msg = r1.status+""; try{ msg = JSON.parse(t1).error?.message || msg; }catch{}
-      out.textContent = "❌ 金鑰無效：" + msg;
-      toast("❌ 金鑰有問題");
+    if(proxy){
+      // 透過中繼站做一次真實呼叫
+      const r = await fetchTimeout(proxy, {method:"POST", headers:{"Content-Type":"text/plain;charset=UTF-8"}, body:JSON.stringify({model, ...pingBody})}, 30000);
+      const t = await r.text();
+      if(r.ok){ out.textContent = "✅ 中繼站正常！可以用了。"; toast("✅ 中繼站正常"); }
+      else{
+        let msg=r.status+""; try{ msg = JSON.parse(t).error?.message || JSON.parse(t).error || msg; }catch{ msg = t.slice(0,200)||msg; }
+        out.textContent = "❌ 中繼站有回應但出錯：" + msg + "\n（多半是中繼站裡的金鑰貼錯，或金鑰的專案有帳單問題）";
+        toast("❌ 中繼站出錯");
+      }
     }else{
-      // 第二關：真的呼叫一次（POST，測辨識通道通不通）
-      out.textContent = "金鑰有效，正在測辨識通道…";
-      const model = state.settings.model || "gemini-3.7-flash";
-      const genUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
-      const r2 = await fetchTimeout(genUrl, {method:"POST", headers:{"Content-Type":"text/plain;charset=UTF-8"}, body:JSON.stringify({contents:[{parts:[{text:"ping"}]}]})}, 25000);
-      const t2 = await r2.text();
-      if(r2.ok){
-        out.textContent = "✅ 全部正常！金鑰有效、辨識通道也通。";
-        toast("✅ 全部正常");
-      }else{
-        let msg = r2.status+""; try{ msg = JSON.parse(t2).error?.message || msg; }catch{}
-        out.textContent = "⚠️ 金鑰有效，但辨識呼叫被拒：" + msg;
-        toast("⚠️ 辨識通道有問題");
+      // 直接連 Google：先 GET 測金鑰，再 POST 測辨識通道
+      const r1 = await fetchTimeout(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}&pageSize=1`, {method:"GET"}, 20000);
+      const t1 = await r1.text();
+      if(!r1.ok){ let m=r1.status+""; try{ m=JSON.parse(t1).error?.message||m; }catch{} out.textContent="❌ 金鑰無效："+m; toast("❌ 金鑰有問題"); }
+      else{
+        out.textContent = "金鑰有效，正在測辨識通道…";
+        const r2 = await fetchTimeout(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, {method:"POST", headers:{"Content-Type":"text/plain;charset=UTF-8"}, body:JSON.stringify(pingBody)}, 25000);
+        const t2 = await r2.text();
+        if(r2.ok){ out.textContent = "✅ 全部正常！金鑰有效、辨識通道也通。"; toast("✅ 全部正常"); }
+        else{ let m=r2.status+""; try{ m=JSON.parse(t2).error?.message||m; }catch{} out.textContent="⚠️ 金鑰有效，但辨識呼叫被拒："+m; toast("⚠️ 辨識通道有問題"); }
       }
     }
   }catch(e){
-    out.textContent = "❌ " + (e.message||e) + "\n（金鑰可能沒問題，是這台裝置連 Google 的辨識通道不通——換手機門號網路試試）";
+    out.textContent = "❌ " + (e.message||e) + (proxy ? "\n（連不到中繼站，檢查網址是否正確、Worker 是否已部署）" : "\n（金鑰可能沒問題，是這台裝置連 Google 的辨識通道被擋——建議改用中繼站）");
     toast("❌ " + (e.message||e));
   }
   $("#btnTestKey").disabled = false;
-  $("#btnTestKey").textContent = "測試金鑰是否可用";
+  $("#btnTestKey").textContent = "測試連線是否可用";
 };
 
 function renderItinEditor(){
