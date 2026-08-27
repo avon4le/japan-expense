@@ -1073,6 +1073,7 @@ $("#photoInput").onchange = async (ev)=>{
   const hint = $("#mPhotoHint");
   const btn = $("#mPhoto");
   if(btn){ btn.innerHTML = `<span class="spin"></span> 辨識中…`; btn.disabled = true; }
+  if(hint){ hint.textContent = "辨識中，最多等 30 秒…"; hint.style.color = ""; }
   try{
     const b64 = await fileToJpegBase64(file);
     const result = await callGemini(b64);
@@ -1097,8 +1098,9 @@ $("#photoInput").onchange = async (ev)=>{
   }catch(err){
     console.error(err);
     if(btn){ btn.innerHTML = `📷 拍收據 / 選 Suica 截圖`; btn.disabled = false; }
-    if(hint) hint.textContent = "";
-    toast("辨識失敗：" + (err.message||err).toString().slice(0,80));
+    const m = (err && (err.message||err)).toString();
+    if(hint){ hint.textContent = "❌ 辨識失敗：" + m; hint.style.color = "var(--danger)"; }
+    toast("辨識失敗（訊息在按鈕下方）");
   }
 };
 
@@ -1130,7 +1132,7 @@ function normPayment(p){
   return "其他";
 }
 
-async function fileToJpegBase64(file, maxDim=1400, quality=0.82){
+async function fileToJpegBase64(file, maxDim=1024, quality=0.72){
   const img = await new Promise((res,rej)=>{
     const i = new Image();
     i.onload = ()=>res(i); i.onerror = rej;
@@ -1166,21 +1168,35 @@ async function callGemini(base64jpeg){
     ]}],
     generationConfig:{ temperature:0, responseMimeType:"application/json" }
   };
-  const res = await fetchTimeout(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)},30000);
-  if(!res.ok){
-    const t = await res.text();
-    let msg = res.status + "";
-    try{ msg = JSON.parse(t).error?.message || msg; }catch{}
-    throw new Error(msg);
+  let lastErr;
+  for(let attempt=1; attempt<=2; attempt++){
+    try{
+      const res = await fetchTimeout(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)},30000);
+      if(!res.ok){
+        const t = await res.text();
+        let msg = res.status + "";
+        try{ msg = JSON.parse(t).error?.message || msg; }catch{}
+        throw new Error(msg);
+      }
+      const data = await res.json();
+      const txt = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      try{ return JSON.parse(txt); }
+      catch{
+        const m = txt.match(/\{[\s\S]*\}/);
+        if(m) return JSON.parse(m[0]);
+        throw new Error("AI 回傳格式看不懂");
+      }
+    }catch(e){
+      lastErr = e;
+      // 只有連線類錯誤才自動重試一次
+      if(attempt < 2 && /連不到|逾時|Failed to fetch|NetworkError|Load failed/i.test(e.message||"")){
+        await new Promise(r=>setTimeout(r, 900));
+        continue;
+      }
+      throw e;
+    }
   }
-  const data = await res.json();
-  const txt = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-  try{ return JSON.parse(txt); }
-  catch{
-    const m = txt.match(/\{[\s\S]*\}/);
-    if(m) return JSON.parse(m[0]);
-    throw new Error("回傳格式看不懂");
-  }
+  throw lastErr;
 }
 
 function openSuicaModal(entries){
