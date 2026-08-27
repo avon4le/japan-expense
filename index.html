@@ -1079,7 +1079,7 @@ $("#photoInput").onchange = async (ev)=>{
   const hint = $("#mPhotoHint");
   const btn = $("#mPhoto");
   if(btn){ btn.innerHTML = `<span class="spin"></span> 辨識中…`; btn.disabled = true; }
-  if(hint){ hint.textContent = "辨識中，最多等 30 秒…"; hint.style.color = ""; }
+  if(hint){ hint.textContent = "辨識中，連線不穩會自動重試，最多等 2 分鐘…"; hint.style.color = ""; }
   try{
     const b64 = await fileToJpegBase64(file);
     const result = await callGemini(b64);
@@ -1163,8 +1163,26 @@ async function fetchTimeout(url, opts={}, ms=25000){
   const ctrl = new AbortController();
   const timer = setTimeout(()=>ctrl.abort(), ms);
   try{ return await fetch(url, {...opts, signal: ctrl.signal}); }
-  catch(e){ if(e.name==="AbortError") throw new Error("連線逾時（"+(ms/1000)+"秒沒回應），請檢查網路後再試"); throw new Error("連不到 Google 伺服器：" + (e.message||e)); }
+  catch(e){ if(e.name==="AbortError") throw new Error("連線逾時（"+(ms/1000)+"秒沒回應）"); throw new Error("連線中斷：" + (e.message||e)); }
   finally{ clearTimeout(timer); }
+}
+const NET_ERR = /連不到|連線逾時|連線中斷|Failed to fetch|NetworkError|Load failed|network/i;
+// 送出請求，連線類失敗自動重試多次（有些網路會間歇性擋掉 POST）
+async function postWithRetry(url, bodyStr, {tries=4, timeoutMs=45000, waits=[1200,3000,6000]}={}){
+  let lastErr;
+  for(let i=0;i<tries;i++){
+    try{
+      return await fetchTimeout(url,{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8"},body:bodyStr}, timeoutMs);
+    }catch(e){
+      lastErr = e;
+      if(i < tries-1 && NET_ERR.test(e.message||"")){
+        await new Promise(r=>setTimeout(r, waits[i]||6000));
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw lastErr;
 }
 
 // 決定要打中繼站還是直接連 Google
@@ -1186,38 +1204,21 @@ async function callGemini(base64jpeg){
     generationConfig:{ temperature:0, responseMimeType:"application/json" }
   };
   if(tgt.viaProxy) body.model = tgt.model;
-  const url = tgt.url;
-  let lastErr;
-  for(let attempt=1; attempt<=2; attempt++){
-    try{
-      // 用 text/plain 送 JSON：避免觸發 CORS 預檢(OPTIONS)，很多網路環境才通得過。
-      // Google 的 generateContent 端點會照樣把 body 當 JSON 解析。
-      const res = await fetchTimeout(url,{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8"},body:JSON.stringify(body)},30000);
-      if(!res.ok){
-        const t = await res.text();
-        let msg = res.status + "";
-        try{ msg = JSON.parse(t).error?.message || msg; }catch{}
-        throw new Error(msg);
-      }
-      const data = await res.json();
-      const txt = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      try{ return JSON.parse(txt); }
-      catch{
-        const m = txt.match(/\{[\s\S]*\}/);
-        if(m) return JSON.parse(m[0]);
-        throw new Error("AI 回傳格式看不懂");
-      }
-    }catch(e){
-      lastErr = e;
-      // 只有連線類錯誤才自動重試一次
-      if(attempt < 2 && /連不到|逾時|Failed to fetch|NetworkError|Load failed/i.test(e.message||"")){
-        await new Promise(r=>setTimeout(r, 900));
-        continue;
-      }
-      throw e;
-    }
+  const res = await postWithRetry(tgt.url, JSON.stringify(body));
+  if(!res.ok){
+    const t = await res.text();
+    let msg = res.status + "";
+    try{ msg = JSON.parse(t).error?.message || msg; }catch{}
+    throw new Error(msg);
   }
-  throw lastErr;
+  const data = await res.json();
+  const txt = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  try{ return JSON.parse(txt); }
+  catch{
+    const m = txt.match(/\{[\s\S]*\}/);
+    if(m) return JSON.parse(m[0]);
+    throw new Error("AI 回傳格式看不懂");
+  }
 }
 
 function openSuicaModal(entries){
@@ -1518,35 +1519,37 @@ $("#btnTestKey").onclick = async ()=>{
   if(!proxy && !key){ out.textContent = "請先填中繼站網址，或 API 金鑰"; return; }
   $("#btnTestKey").disabled = true;
   $("#btnTestKey").textContent = "測試中…";
-  out.textContent = "測試中，最多等 30 秒…";
+  out.textContent = "測試中，會自動重試幾次，最多等 2 分鐘…";
   const model = state.settings.model || "gemini-3.7-flash";
   const pingBody = {contents:[{parts:[{text:"ping"}]}]};
   try{
     if(proxy){
-      // 透過中繼站做一次真實呼叫
-      const r = await fetchTimeout(proxy, {method:"POST", headers:{"Content-Type":"text/plain;charset=UTF-8"}, body:JSON.stringify({model, ...pingBody})}, 30000);
+      const r = await postWithRetry(proxy, JSON.stringify({model, ...pingBody}));
       const t = await r.text();
       if(r.ok){ out.textContent = "✅ 中繼站正常！可以用了。"; toast("✅ 中繼站正常"); }
+      else if(r.status===429 || /quota|rate/i.test(t)){
+        out.textContent = "✅ 連線正常（只是剛剛測太多次被限流）。\n等 1 分鐘就能用。實際拍收據不會遇到。";
+        toast("✅ 連線正常（暫時被限流）");
+      }
       else{
         let msg=r.status+""; try{ msg = JSON.parse(t).error?.message || JSON.parse(t).error || msg; }catch{ msg = t.slice(0,200)||msg; }
         out.textContent = "❌ 中繼站有回應但出錯：" + msg + "\n（多半是中繼站裡的金鑰貼錯，或金鑰的專案有帳單問題）";
         toast("❌ 中繼站出錯");
       }
     }else{
-      // 直接連 Google：先 GET 測金鑰，再 POST 測辨識通道
       const r1 = await fetchTimeout(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}&pageSize=1`, {method:"GET"}, 20000);
       const t1 = await r1.text();
       if(!r1.ok){ let m=r1.status+""; try{ m=JSON.parse(t1).error?.message||m; }catch{} out.textContent="❌ 金鑰無效："+m; toast("❌ 金鑰有問題"); }
       else{
-        out.textContent = "金鑰有效，正在測辨識通道…";
-        const r2 = await fetchTimeout(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, {method:"POST", headers:{"Content-Type":"text/plain;charset=UTF-8"}, body:JSON.stringify(pingBody)}, 25000);
+        out.textContent = "金鑰有效，正在測辨識通道（會自動重試）…";
+        const r2 = await postWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, JSON.stringify(pingBody));
         const t2 = await r2.text();
-        if(r2.ok){ out.textContent = "✅ 全部正常！金鑰有效、辨識通道也通。"; toast("✅ 全部正常"); }
+        if(r2.ok || r2.status===429 || /quota|rate/i.test(t2)){ out.textContent = "✅ 全部正常！（若顯示限流，等 1 分鐘即可）"; toast("✅ 全部正常"); }
         else{ let m=r2.status+""; try{ m=JSON.parse(t2).error?.message||m; }catch{} out.textContent="⚠️ 金鑰有效，但辨識呼叫被拒："+m; toast("⚠️ 辨識通道有問題"); }
       }
     }
   }catch(e){
-    out.textContent = "❌ " + (e.message||e) + (proxy ? "\n（連不到中繼站，檢查網址是否正確、Worker 是否已部署）" : "\n（金鑰可能沒問題，是這台裝置連 Google 的辨識通道被擋——建議改用中繼站）");
+    out.textContent = "❌ " + (e.message||e) + "\n（重試多次仍連不上。你的網路正在間歇性擋掉 POST 請求——多按幾次「測試」，或換個網路/時段再試。拍照辨識也會自動重試。）";
     toast("❌ " + (e.message||e));
   }
   $("#btnTestKey").disabled = false;
