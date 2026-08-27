@@ -1171,7 +1171,9 @@ async function callGemini(base64jpeg){
   let lastErr;
   for(let attempt=1; attempt<=2; attempt++){
     try{
-      const res = await fetchTimeout(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)},30000);
+      // 用 text/plain 送 JSON：避免觸發 CORS 預檢(OPTIONS)，很多網路環境才通得過。
+      // Google 的 generateContent 端點會照樣把 body 當 JSON 解析。
+      const res = await fetchTimeout(url,{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8"},body:JSON.stringify(body)},30000);
       if(!res.ok){
         const t = await res.text();
         let msg = res.status + "";
@@ -1496,21 +1498,32 @@ $("#btnTestKey").onclick = async ()=>{
   $("#btnTestKey").textContent = "測試中…";
   out.textContent = "測試中，最多等 20 秒…";
   try{
-    // 用「列出模型」測金鑰：快、不耗辨識額度
+    // 第一關：列出模型（GET，測金鑰有效）
     const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}&pageSize=1`;
-    const res = await fetchTimeout(listUrl, {method:"GET"}, 20000);
-    const t = await res.text();
-    if(res.ok){
-      out.textContent = "✅ 金鑰有效，可以用了！";
-      toast("✅ 金鑰有效");
-    }else{
-      let msg = res.status+"";
-      try{ msg = JSON.parse(t).error?.message || msg; }catch{}
-      out.textContent = "❌ " + msg;
+    const r1 = await fetchTimeout(listUrl, {method:"GET"}, 20000);
+    const t1 = await r1.text();
+    if(!r1.ok){
+      let msg = r1.status+""; try{ msg = JSON.parse(t1).error?.message || msg; }catch{}
+      out.textContent = "❌ 金鑰無效：" + msg;
       toast("❌ 金鑰有問題");
+    }else{
+      // 第二關：真的呼叫一次（POST，測辨識通道通不通）
+      out.textContent = "金鑰有效，正在測辨識通道…";
+      const model = state.settings.model || "gemini-3.7-flash";
+      const genUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
+      const r2 = await fetchTimeout(genUrl, {method:"POST", headers:{"Content-Type":"text/plain;charset=UTF-8"}, body:JSON.stringify({contents:[{parts:[{text:"ping"}]}]})}, 25000);
+      const t2 = await r2.text();
+      if(r2.ok){
+        out.textContent = "✅ 全部正常！金鑰有效、辨識通道也通。";
+        toast("✅ 全部正常");
+      }else{
+        let msg = r2.status+""; try{ msg = JSON.parse(t2).error?.message || msg; }catch{}
+        out.textContent = "⚠️ 金鑰有效，但辨識呼叫被拒：" + msg;
+        toast("⚠️ 辨識通道有問題");
+      }
     }
   }catch(e){
-    out.textContent = "❌ " + (e.message||e);
+    out.textContent = "❌ " + (e.message||e) + "\n（金鑰可能沒問題，是這台裝置連 Google 的辨識通道不通——換手機門號網路試試）";
     toast("❌ " + (e.message||e));
   }
   $("#btnTestKey").disabled = false;
