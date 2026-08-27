@@ -1,0 +1,1662 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#a9ddf0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="旅遊記帳">
+<title>日本旅遊記帳</title>
+<link rel="manifest" id="manifest">
+<link rel="apple-touch-icon" id="appleicon">
+<link rel="icon" id="favicon">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   顏色 / 圓角 / 陰影 —— 想換整套風格改這裡就好
+   ============================================================ */
+:root{
+  --bg:#f1fbfb;
+  --surface:#ffffff;
+  --surface-2:#e6f6f5;
+  --text:#2f4a54;
+  --text-soft:#7c9ba5;
+  --border:#d5eded;
+  --peach:#79dcd2;
+  --peach-deep:#17b3a6;
+  --mint:#bfe9d0;
+  --mint-deep:#3fc380;
+  --sky:#a9ddf0;
+  --sky-deep:#2ba9d6;
+  --yellow:#ffe08a;
+  --danger:#ef6f6f;
+  --hero-grad:linear-gradient(135deg,#a9ddf0,#bfe9d0);
+  --hero-text:#1b5560;
+  --on-text:#0f3d3a;
+  --photo-grad:linear-gradient(135deg,#a9ddf0,#bfe9d0);
+  --photo-text:#1c4a4a;
+  --radius:22px;
+  --radius-sm:14px;
+  --shadow:0 8px 24px rgba(90,170,175,.20);
+  --shadow-sm:0 3px 10px rgba(90,170,175,.16);
+  --font:"M PLUS Rounded 1c","PingFang TC","Microsoft JhengHei","Noto Sans TC",system-ui,sans-serif;
+}
+/* 深色/淺色與各配色主題的實際色值由 JS 的 PALETTES 直接寫到 <html> style 上 */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  font-family:var(--font);
+  background:var(--bg);
+  color:var(--text);
+  line-height:1.6;
+  font-size:16px;
+  overscroll-behavior-y:none;
+}
+button,input,select,textarea{font-family:inherit;font-size:16px;color:inherit}
+button{cursor:pointer;border:none;background:none}
+a{color:var(--sky-deep)}
+
+/* ---------- 版面 ---------- */
+#app{max-width:520px;margin:0 auto;padding:0 16px calc(96px + env(safe-area-inset-bottom));min-height:100%}
+header.topbar{
+  position:sticky;top:0;z-index:20;
+  background:var(--bg);
+  padding:14px 4px 10px;
+  display:flex;align-items:center;gap:10px;
+}
+header.topbar h1{font-size:19px;font-weight:700;letter-spacing:.5px}
+header.topbar .spacer{flex:1}
+.theme-btn{font-size:20px;padding:6px;border-radius:12px}
+.theme-btn:active{background:var(--surface-2)}
+
+.card{
+  background:var(--surface);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow-sm);
+  padding:18px;
+  margin-bottom:14px;
+}
+.card h2{font-size:15px;color:var(--text-soft);font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+
+/* ---------- 首頁 ---------- */
+.hero{
+  background:var(--hero-grad);
+  color:var(--hero-text);
+  border-radius:var(--radius);
+  padding:20px;
+  box-shadow:var(--shadow);
+  margin-bottom:14px;
+}
+.hero .label{font-size:13px;font-weight:700;opacity:.8}
+.hero .big{font-size:34px;font-weight:700;line-height:1.2;margin-top:2px}
+.hero .sub{font-size:14px;font-weight:500;opacity:.85;margin-top:4px}
+.hero-row{display:flex;gap:10px;margin-top:14px}
+.hero-mini{flex:1;background:rgba(255,255,255,.45);border-radius:var(--radius-sm);padding:10px 12px}
+:root[data-theme="dark"] .hero-mini{background:rgba(255,255,255,.18)}
+.hero-mini .t{font-size:12px;font-weight:700;opacity:.75}
+.hero-mini .v{font-size:18px;font-weight:700}
+
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--surface-2);border-radius:var(--radius-sm);padding:12px}
+.stat .t{font-size:12px;color:var(--text-soft);font-weight:700}
+.stat .v{font-size:19px;font-weight:700;margin-top:2px}
+.stat .v.small{font-size:15px}
+.progress{height:8px;border-radius:8px;background:var(--border);overflow:hidden;margin-top:8px}
+.progress > i{display:block;height:100%;border-radius:8px;background:var(--mint-deep)}
+.progress.over > i{background:var(--danger)}
+
+.quick-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.quick-btn{
+  flex:0 0 auto;background:var(--surface-2);border-radius:var(--radius-sm);
+  padding:10px 14px;font-weight:700;font-size:14px;display:flex;align-items:center;gap:6px;
+  border:1.5px solid transparent;
+}
+.quick-btn:active{border-color:var(--peach)}
+
+.rate-tool{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rate-tool input{
+  width:110px;background:var(--surface-2);border:1.5px solid var(--border);
+  border-radius:12px;padding:8px 10px;text-align:right;font-weight:700;
+}
+.rate-tool .eq{font-weight:700;color:var(--text-soft)}
+.rate-tool .out{font-weight:700;font-size:18px}
+
+.mini-list .row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed var(--border)}
+.mini-list .row:last-child{border-bottom:none}
+.mini-list .emoji{font-size:20px;width:30px;text-align:center}
+.mini-list .mid{flex:1;min-width:0}
+.mini-list .mid .top{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini-list .mid .bot{font-size:12px;color:var(--text-soft)}
+.mini-list .amt{font-weight:700;text-align:right;white-space:nowrap}
+.mini-list .amt small{display:block;font-size:11px;color:var(--text-soft);font-weight:500}
+
+/* ---------- 表單 ---------- */
+.field{margin-bottom:12px}
+.field label{display:block;font-size:13px;font-weight:700;color:var(--text-soft);margin-bottom:5px}
+.field input,.field select,.field textarea{
+  width:100%;background:var(--surface-2);
+  border:1.5px solid var(--border);border-radius:12px;
+  padding:11px 12px;outline:none;
+}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--peach)}
+.field textarea{resize:vertical;min-height:52px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.amount-input input{font-size:26px;font-weight:700;text-align:right;padding:14px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{
+  flex:1;min-width:64px;background:var(--surface-2);border:1.5px solid var(--border);
+  border-radius:12px;padding:9px 4px;font-weight:700;font-size:14px;
+}
+.seg button.on{background:var(--peach);border-color:var(--peach-deep);color:var(--on-text)}
+.cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.cat-grid button{
+  background:var(--surface-2);border:1.5px solid var(--border);border-radius:14px;
+  padding:10px 2px;display:flex;flex-direction:column;align-items:center;gap:3px;
+  font-size:12px;font-weight:700;
+}
+.cat-grid button .e{font-size:22px}
+.cat-grid button.on{background:var(--mint);border-color:var(--mint-deep)}
+
+.btn-primary{
+  width:100%;background:var(--peach-deep);color:#fff;font-weight:700;font-size:17px;
+  border-radius:16px;padding:15px;box-shadow:var(--shadow-sm);
+}
+.btn-primary:active{transform:translateY(1px)}
+.btn-ghost{
+  width:100%;background:var(--surface-2);color:var(--text);font-weight:700;
+  border-radius:14px;padding:12px;border:1.5px solid var(--border);
+}
+.btn-sub{background:var(--surface-2);border:1.5px solid var(--border);border-radius:12px;padding:9px 12px;font-weight:700;font-size:14px}
+.btn-photo{
+  width:100%;background:var(--photo-grad);
+  color:var(--photo-text);font-weight:700;border-radius:16px;padding:14px;
+  display:flex;align-items:center;justify-content:center;gap:8px;font-size:16px;
+}
+
+/* ---------- 明細 ---------- */
+.filters{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px}
+.filters select,.filters input{
+  flex:0 0 auto;background:var(--surface);border:1.5px solid var(--border);
+  border-radius:12px;padding:8px 10px;font-size:14px;font-weight:700;
+}
+.day-group{margin-bottom:8px}
+.day-head{display:flex;justify-content:space-between;align-items:baseline;padding:14px 4px 6px;font-weight:700}
+.day-head .d{font-size:14px}
+.day-head .s{font-size:13px;color:var(--text-soft)}
+.entry{
+  background:var(--surface);border-radius:var(--radius-sm);box-shadow:var(--shadow-sm);
+  padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;
+}
+.entry .emoji{font-size:22px}
+.entry .mid{flex:1;min-width:0}
+.entry .mid .top{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.entry .mid .bot{font-size:12px;color:var(--text-soft);display:flex;gap:6px;flex-wrap:wrap}
+.tag{background:var(--surface-2);border-radius:8px;padding:1px 7px;font-size:11px;font-weight:700}
+.entry .amt{font-weight:700;text-align:right;white-space:nowrap}
+.entry .amt small{display:block;font-size:11px;color:var(--text-soft);font-weight:500}
+.empty{text-align:center;color:var(--text-soft);padding:40px 20px;font-weight:500}
+.empty .e{font-size:44px;display:block;margin-bottom:8px}
+
+/* ---------- 圖表 ---------- */
+.legend{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.legend .li{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700}
+.legend .dot{width:12px;height:12px;border-radius:4px;flex:0 0 auto}
+.legend .li .pct{margin-left:auto;color:var(--text-soft)}
+.bars{display:flex;align-items:flex-end;gap:5px;height:130px;margin-top:8px}
+.bars .b{flex:1;background:var(--sky);border-radius:6px 6px 0 0;min-height:3px;position:relative}
+.bars .b.today{background:var(--peach-deep)}
+.bar-labels{display:flex;gap:5px;margin-top:4px}
+.bar-labels span{flex:1;text-align:center;font-size:10px;color:var(--text-soft)}
+
+/* ---------- 設定 ---------- */
+.set-row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px dashed var(--border)}
+.set-row:last-child{border-bottom:none}
+.set-row .lab{flex:1;font-weight:700;font-size:14px}
+.set-row .lab small{display:block;font-weight:500;color:var(--text-soft);font-size:12px}
+.set-row input[type=text],.set-row input[type=number],.set-row input[type=password],.set-row select{
+  width:140px;background:var(--surface-2);border:1.5px solid var(--border);border-radius:10px;padding:8px;text-align:right;font-weight:700
+}
+.switch{width:48px;height:28px;border-radius:28px;background:var(--border);position:relative;flex:0 0 auto;transition:background .15s}
+.switch.on{background:var(--mint-deep)}
+.switch i{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:left .15s}
+.switch.on i{left:23px}
+.chip-editor{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip-editor .chip{background:var(--surface-2);border:1.5px solid var(--border);border-radius:10px;padding:6px 10px;font-weight:700;font-size:13px;display:flex;align-items:center;gap:6px}
+.chip-editor .chip button{color:var(--danger);font-weight:700}
+
+.palette-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pal{background:var(--surface-2);border:2px solid var(--border);border-radius:16px;padding:12px 10px;display:flex;flex-direction:column;align-items:flex-start;gap:8px;font-weight:700;font-size:13px}
+.pal.on{border-color:var(--peach-deep)}
+.pal .sw{display:flex;gap:4px}
+.pal .sw i{width:20px;height:20px;border-radius:6px;display:block;border:1px solid rgba(0,0,0,.06)}
+.accent-row{display:flex;align-items:center;gap:10px;margin-top:12px}
+.accent-row input[type=color]{width:44px;height:36px;padding:0;border:1.5px solid var(--border);border-radius:10px;background:var(--surface-2)}
+
+/* ---------- 底部導覽 ---------- */
+nav.tabbar{
+  position:fixed;left:0;right:0;bottom:0;z-index:30;
+  background:var(--surface);
+  border-top:1px solid var(--border);
+  display:flex;justify-content:space-around;align-items:center;
+  padding:8px 6px calc(8px + env(safe-area-inset-bottom));
+  box-shadow:0 -4px 16px rgba(0,0,0,.06);
+}
+nav.tabbar button{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+  font-size:11px;font-weight:700;color:var(--text-soft);padding:4px;
+}
+nav.tabbar button .i{font-size:21px}
+nav.tabbar button.on{color:var(--peach-deep)}
+nav.tabbar .addbtn{
+  flex:0 0 auto;background:var(--peach-deep);color:#fff;
+  width:56px;height:56px;border-radius:50%;margin-top:-22px;
+  box-shadow:var(--shadow);font-size:26px;
+  display:flex;align-items:center;justify-content:center;
+}
+
+/* ---------- Modal ---------- */
+.modal-bg{
+  position:fixed;inset:0;z-index:50;background:rgba(60,45,40,.45);
+  display:flex;align-items:flex-end;justify-content:center;padding:0;
+}
+.modal{
+  background:var(--bg);width:100%;max-width:520px;
+  border-radius:24px 24px 0 0;padding:18px 16px calc(20px + env(safe-area-inset-bottom));
+  max-height:92vh;overflow-y:auto;
+}
+.modal h3{font-size:17px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.modal .close{position:absolute}
+.modal-head{display:flex;align-items:center;margin-bottom:14px}
+.modal-head h3{flex:1;margin:0}
+.modal-head button{font-size:22px;color:var(--text-soft);padding:4px}
+
+/* ---------- PIN 鎖 ---------- */
+#lock{
+  position:fixed;inset:0;z-index:100;background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;
+}
+#lock .e{font-size:54px}
+#lock .dots{display:flex;gap:14px}
+#lock .dots i{width:16px;height:16px;border-radius:50%;background:var(--border)}
+#lock .dots i.f{background:var(--peach-deep)}
+#lock .pad{display:grid;grid-template-columns:repeat(3,72px);gap:14px}
+#lock .pad button{
+  height:72px;border-radius:50%;background:var(--surface);box-shadow:var(--shadow-sm);
+  font-size:26px;font-weight:700;
+}
+
+/* ---------- 提示 toast ---------- */
+#toast{
+  position:fixed;left:50%;transform:translateX(-50%);bottom:110px;z-index:80;
+  background:var(--text);color:var(--bg);padding:10px 18px;border-radius:14px;
+  font-weight:700;font-size:14px;box-shadow:var(--shadow);opacity:0;transition:opacity .2s,transform .2s;
+  pointer-events:none;max-width:90%;text-align:center;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(-6px)}
+
+/* 存檔飄浮動畫 */
+.floaty{position:fixed;z-index:90;font-size:30px;pointer-events:none;animation:floatUp 1s ease-out forwards}
+@keyframes floatUp{
+  0%{opacity:0;transform:translateY(0) scale(.6)}
+  20%{opacity:1}
+  100%{opacity:0;transform:translateY(-90px) scale(1.2)}
+}
+
+.banner{
+  background:var(--yellow);color:#5a3d2e;border-radius:var(--radius-sm);
+  padding:10px 14px;font-weight:700;font-size:13px;margin-bottom:12px;
+  display:flex;align-items:center;gap:8px;
+}
+:root[data-theme="dark"] .banner{color:#3a2a20}
+.banner button{margin-left:auto;font-weight:700;text-decoration:underline}
+
+.hint{font-size:12px;color:var(--text-soft);font-weight:500;margin-top:6px}
+.view{display:none}
+.view.on{display:block;animation:fadeIn .18s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.spin{display:inline-block;width:18px;height:18px;border:3px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div id="lock">
+  <div class="e">🔒</div>
+  <div style="font-weight:700">請輸入 PIN 碼</div>
+  <div class="dots"><i></i><i></i><i></i><i></i></div>
+  <div class="pad">
+    <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
+    <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
+    <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
+    <button data-k="x">⌫</button><button data-k="0">0</button><button data-k="ok">OK</button>
+  </div>
+</div>
+
+<div id="app">
+  <header class="topbar">
+    <h1>🗾 日本旅遊記帳</h1>
+    <span class="spacer"></span>
+    <button class="theme-btn" id="palBtn" title="換配色（依心情）">🎨</button>
+    <button class="theme-btn" id="themeBtn" title="切換深色/淺色">🌙</button>
+  </header>
+
+  <!-- ============ 首頁 ============ -->
+  <section class="view on" id="view-home">
+    <div id="backupBanner"></div>
+
+    <div class="hero">
+      <div class="label">這趟旅行總花費</div>
+      <div class="big" id="heroTotal">¥0</div>
+      <div class="sub" id="heroTotalNT">約 NT$0</div>
+      <div class="hero-row">
+        <div class="hero-mini"><div class="t">今日花費</div><div class="v" id="heroToday">¥0</div></div>
+        <div class="hero-mini"><div class="t" id="heroBudgetT">今日剩餘</div><div class="v" id="heroBudget">—</div></div>
+      </div>
+    </div>
+
+    <div class="card" id="settleCard">
+      <h2>💛 分帳結算</h2>
+      <div id="settleBody"></div>
+    </div>
+
+    <div class="card">
+      <h2>⚡ 快速記一筆</h2>
+      <div class="quick-row" id="quickRow"></div>
+    </div>
+
+    <div class="card">
+      <h2>💱 匯率小工具</h2>
+      <div class="rate-tool">
+        <input type="number" id="rtYen" placeholder="日圓" inputmode="numeric">
+        <span class="eq">→</span>
+        <span class="out" id="rtOut">NT$0</span>
+      </div>
+      <div class="hint">目前匯率 1 日圓 = <span id="rtRate">0.21</span> 台幣（可在設定調整）</div>
+    </div>
+
+    <div class="card">
+      <h2>📊 分類佔比（前 5）</h2>
+      <div id="homeCats"></div>
+    </div>
+
+    <div class="card">
+      <h2>🕐 最近記錄</h2>
+      <div class="mini-list" id="recentList"></div>
+    </div>
+  </section>
+
+  <!-- ============ 明細 ============ -->
+  <section class="view" id="view-list">
+    <div class="card">
+      <h2>🔎 篩選</h2>
+      <div class="filters">
+        <input type="search" id="fSearch" placeholder="搜尋店名/備註" style="min-width:130px">
+        <select id="fCity"><option value="">全部城市</option></select>
+        <select id="fCat"><option value="">全部分類</option></select>
+        <select id="fPayer"><option value="">全部付款人</option><option>我</option><option>爸爸</option></select>
+      </div>
+    </div>
+    <div id="listBody"></div>
+  </section>
+
+  <!-- ============ 圖表 ============ -->
+  <section class="view" id="view-chart">
+    <div class="card">
+      <h2>🍩 分類花費</h2>
+      <div style="display:flex;justify-content:center"><svg id="donut" width="180" height="180" viewBox="0 0 180 180"></svg></div>
+      <div class="legend" id="donutLegend"></div>
+    </div>
+    <div class="card">
+      <h2>📅 每日花費</h2>
+      <div class="bars" id="dailyBars"></div>
+      <div class="bar-labels" id="dailyLabels"></div>
+    </div>
+    <div class="card">
+      <h2>🏙️ 各城市花費</h2>
+      <div class="mini-list" id="cityStats"></div>
+    </div>
+    <div class="card">
+      <h2>📝 旅遊回顧摘要</h2>
+      <div id="summaryBody"></div>
+      <button class="btn-ghost" id="btnSummaryHtml" style="margin-top:10px">下載回顧（HTML）</button>
+    </div>
+  </section>
+
+  <!-- ============ 設定 ============ -->
+  <section class="view" id="view-set">
+    <div class="card">
+      <h2>🎨 配色主題</h2>
+      <div class="palette-grid" id="paletteGrid"></div>
+      <div class="accent-row">
+        <input type="color" id="setAccent">
+        <div class="lab" style="flex:1;font-weight:700;font-size:14px">自訂主色<small style="display:block;font-weight:500;color:var(--text-soft)">混搭：換掉主題的主要顏色</small></div>
+        <button class="btn-sub" id="btnClearAccent">還原</button>
+      </div>
+      <div class="hint">隨時可換，記帳資料完全不受影響。頂端 🎨 也能快速切換。</div>
+    </div>
+
+    <div class="card">
+      <h2>💱 匯率</h2>
+      <div class="set-row">
+        <div class="lab">1 日圓 = ? 台幣<small>每筆會記下當時匯率</small></div>
+        <input type="number" id="setRate" step="0.001">
+      </div>
+      <button class="btn-ghost" id="btnRecalc" style="margin-top:10px">用目前匯率重算全部台幣</button>
+    </div>
+
+    <div class="card">
+      <h2>📷 拍照辨識（Google Gemini）</h2>
+      <div class="field">
+        <label>API 金鑰（只存在這支手機）</label>
+        <input type="password" id="setKey" placeholder="貼上 AI Studio 的 API key">
+      </div>
+      <div class="field">
+        <label>辨識模型</label>
+        <select id="setModel">
+          <option value="gemini-2.5-flash">gemini-2.5-flash（預設）</option>
+          <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+          <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite（省額度）</option>
+        </select>
+      </div>
+      <button class="btn-ghost" id="btnTestKey">測試金鑰是否可用</button>
+      <div class="hint">申請教學請看專案的 README。金鑰不會上傳，只存在瀏覽器。</div>
+    </div>
+
+    <div class="card">
+      <h2>💰 預算</h2>
+      <div class="set-row"><div class="lab">整趟總預算（日圓）<small>0 = 不設定</small></div><input type="number" id="setBudgetTotal"></div>
+      <div class="set-row"><div class="lab">每日預算（日圓）<small>0 = 不設定</small></div><input type="number" id="setBudgetDaily"></div>
+    </div>
+
+    <div class="card">
+      <h2>🗓️ 行程（依日期自動帶城市）</h2>
+      <div id="itinEditor"></div>
+      <button class="btn-sub" id="btnAddItin" style="margin-top:8px">＋ 新增行程段</button>
+    </div>
+
+    <div class="card">
+      <h2>🏷️ 分類</h2>
+      <div class="chip-editor" id="catEditor"></div>
+      <div class="row2" style="margin-top:8px">
+        <input type="text" id="newCatEmoji" placeholder="表情 例:🍜" style="background:var(--surface-2);border:1.5px solid var(--border);border-radius:10px;padding:8px">
+        <input type="text" id="newCatName" placeholder="名稱 例:餐飲" style="background:var(--surface-2);border:1.5px solid var(--border);border-radius:10px;padding:8px">
+      </div>
+      <button class="btn-sub" id="btnAddCat" style="margin-top:8px">＋ 新增分類</button>
+    </div>
+
+    <div class="card">
+      <h2>🏙️ 城市</h2>
+      <div class="chip-editor" id="cityEditor"></div>
+      <div class="row2" style="margin-top:8px">
+        <input type="text" id="newCity" placeholder="城市名 例:名古屋" style="background:var(--surface-2);border:1.5px solid var(--border);border-radius:10px;padding:8px">
+        <button class="btn-sub" id="btnAddCity">＋ 新增城市</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>⚡ 快速記一筆按鈕</h2>
+      <div id="quickEditor"></div>
+      <button class="btn-sub" id="btnAddQuick" style="margin-top:8px">＋ 新增快速按鈕</button>
+    </div>
+
+    <div class="card">
+      <h2>🎛️ 其他</h2>
+      <div class="set-row"><div class="lab">預設付款人</div>
+        <select id="setDefPayer"><option>爸爸</option><option>我</option></select></div>
+      <div class="set-row"><div class="lab">預設付款方式</div>
+        <select id="setDefPayment"><option>現金</option><option>Suica</option><option>信用卡</option><option>其他</option></select></div>
+      <div class="set-row"><div class="lab">深色模式</div>
+        <select id="setTheme"><option value="auto">跟隨系統</option><option value="light">淺色</option><option value="dark">深色</option></select></div>
+      <div class="set-row"><div class="lab">每日備份提醒</div><div class="switch" id="swBackup"><i></i></div></div>
+      <div class="set-row"><div class="lab">PIN 碼鎖<small>打開 App 需輸入 4 位數</small></div><div class="switch" id="swPin"><i></i></div></div>
+    </div>
+
+    <div class="card">
+      <h2>💾 資料備份 / 匯出</h2>
+      <button class="btn-ghost" id="btnExportCsv" style="margin-bottom:8px">匯出 CSV（Excel 可開）</button>
+      <button class="btn-ghost" id="btnExportJson" style="margin-bottom:8px">匯出 JSON 備份（含設定）</button>
+      <button class="btn-ghost" id="btnImportJson" style="margin-bottom:8px">從 JSON 備份還原</button>
+      <input type="file" id="importFile" accept="application/json" hidden>
+      <button class="btn-ghost" id="btnClear" style="color:var(--danger);border-color:var(--danger)">清除所有資料</button>
+    </div>
+
+    <div class="hint" style="text-align:center;padding-bottom:10px">日本旅遊記帳 · 單檔離線版 · v1</div>
+  </section>
+</div>
+
+<nav class="tabbar">
+  <button data-tab="home" class="on"><span class="i">🏠</span>首頁</button>
+  <button data-tab="list"><span class="i">📋</span>明細</button>
+  <button class="addbtn" id="tabAdd">＋</button>
+  <button data-tab="chart"><span class="i">📊</span>圖表</button>
+  <button data-tab="set"><span class="i">⚙️</span>設定</button>
+</nav>
+
+<div id="toast"></div>
+<div id="modalRoot"></div>
+<input type="file" id="photoInput" accept="image/*" hidden>
+
+<script>
+/* ============================================================
+   日本旅遊記帳 —— 單檔 App
+   資料全部存在此瀏覽器的 localStorage，key = "jp-expense-v1"
+   ============================================================ */
+const LS_KEY = "jp-expense-v1";
+const $ = (s,el=document)=>el.querySelector(s);
+const $$ = (s,el=document)=>[...el.querySelectorAll(s)];
+const todayStr = ()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;};
+const nowTime = ()=>{const d=new Date();return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;};
+const uid = ()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const fmtYen = n=>"¥"+Math.round(n||0).toLocaleString("ja-JP");
+const fmtNT = n=>"NT$"+Math.round(n||0).toLocaleString("en-US");
+const esc = s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+const DEFAULT_STATE = {
+  settings:{
+    rate:0.21,
+    apiKey:"",
+    model:"gemini-2.5-flash",
+    categories:[
+      {emoji:"🍜",name:"餐飲"},{emoji:"🚃",name:"交通"},{emoji:"🏨",name:"住宿"},
+      {emoji:"🛍️",name:"購物"},{emoji:"🎫",name:"門票/景點"},{emoji:"🏪",name:"超商"},
+      {emoji:"☕",name:"咖啡/甜點"},{emoji:"🎁",name:"伴手禮"},{emoji:"✨",name:"其他"}
+    ],
+    cities:["東京","京都","大阪"],
+    itinerary:[],
+    budgetTotal:0,
+    budgetDaily:0,
+    defaultPayer:"爸爸",
+    defaultPayment:"現金",
+    theme:"auto",
+    palette:"ocean",
+    customAccent:"",
+    backupReminder:true,
+    lastExport:"",
+    pinEnabled:false,
+    pin:"",
+    quickButtons:[
+      {emoji:"🏪",label:"超商",category:"超商",payment:"現金",payer:"爸爸"},
+      {emoji:"🚃",label:"車站/地鐵",category:"交通",payment:"Suica",payer:"爸爸"},
+      {emoji:"🍜",label:"餐廳",category:"餐飲",payment:"現金",payer:"爸爸"},
+      {emoji:"☕",label:"咖啡",category:"咖啡/甜點",payment:"現金",payer:"我"},
+      {emoji:"🥤",label:"販賣機",category:"其他",payment:"現金",payer:"爸爸"}
+    ]
+  },
+  expenses:[]
+};
+
+let state = load();
+let editingId = null;
+let pendingPhoto = null; // 拍照辨識結果暫存
+
+function load(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(!raw) return structuredClone(DEFAULT_STATE);
+    const parsed = JSON.parse(raw);
+    // 合併預設，避免舊資料缺欄位
+    parsed.settings = Object.assign(structuredClone(DEFAULT_STATE.settings), parsed.settings||{});
+    parsed.expenses = parsed.expenses||[];
+    return parsed;
+  }catch(e){
+    console.error(e);
+    return structuredClone(DEFAULT_STATE);
+  }
+}
+function save(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+  catch(e){ toast("⚠️ 儲存失敗，空間可能已滿"); }
+}
+
+/* ---------- 提示 ---------- */
+let toastTimer;
+function toast(msg){
+  const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove("show"), 2200);
+}
+function floaty(emoji){
+  const f = document.createElement("div");
+  f.className = "floaty"; f.textContent = emoji;
+  f.style.left = (window.innerWidth/2 - 15) + "px";
+  f.style.top = (window.innerHeight - 160) + "px";
+  document.body.appendChild(f);
+  setTimeout(()=>f.remove(), 1100);
+}
+
+/* ============================================================
+   配色主題 —— 想加新配色就往這個表加一組
+   每組要有 light / dark 兩套色，chart 圖表色，floaty 存檔小圖，icon 圖示
+   ============================================================ */
+const PALETTES = {
+  ocean:{
+    label:"夏日海洋", emoji:"🌊",
+    light:{'--bg':'#f1fbfb','--surface':'#ffffff','--surface-2':'#e6f6f5','--text':'#2f4a54','--text-soft':'#7c9ba5','--border':'#d5eded','--peach':'#79dcd2','--peach-deep':'#17b3a6','--mint':'#bfe9d0','--mint-deep':'#3fc380','--sky':'#a9ddf0','--sky-deep':'#2ba9d6','--yellow':'#ffe08a','--danger':'#ef6f6f','--shadow':'0 8px 24px rgba(90,170,175,.20)','--shadow-sm':'0 3px 10px rgba(90,170,175,.16)','--hero-grad':'linear-gradient(135deg,#a9ddf0,#bfe9d0)','--hero-text':'#1b5560','--on-text':'#0f3d3a','--photo-grad':'linear-gradient(135deg,#a9ddf0,#bfe9d0)','--photo-text':'#1c4a4a'},
+    dark:{'--bg':'#0f2831','--surface':'#17323d','--surface-2':'#1f404c','--text':'#e6f4f1','--text-soft':'#9dc0c4','--border':'#2c4d58','--peach':'#34c9bd','--peach-deep':'#48d6c8','--mint':'#6fd6a8','--mint-deep':'#82e6b8','--sky':'#7fc9e8','--sky-deep':'#9bd8f2','--yellow':'#ffd97a','--danger':'#ff8f8f','--shadow':'0 8px 24px rgba(0,0,0,.38)','--shadow-sm':'0 3px 10px rgba(0,0,0,.32)','--hero-grad':'linear-gradient(135deg,#7fc9e8,#6fd6a8)','--hero-text':'#0c2d33','--on-text':'#08211f','--photo-grad':'linear-gradient(135deg,#7fc9e8,#6fd6a8)','--photo-text':'#0e2626'},
+    chart:["#17b3a6","#ff8f7a","#2ba9d6","#3fc380","#ffcf5c","#9b8ce0","#4ecdc4","#7fb8e6","#f78da7","#a0d468"],
+    floaty:["🎉","✈️","🍧","🌊","🏖️","🍹"],
+    meta:{light:"#a9ddf0",dark:"#0f2831"},
+    icon:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#2ba9d6"/><circle cx="360" cy="148" r="44" fill="#ffe9a8"/><path d="M60 402 L200 208 L300 340 L360 268 L452 402 Z" fill="#ffffff"/><path d="M60 402 L200 208 L250 278 L150 402 Z" fill="#bfe9d0"/><path d="M40 430 q40 -26 80 0 t80 0 t80 0 t80 0 t80 0" stroke="#ffffff" stroke-width="16" fill="none" stroke-linecap="round" opacity="0.85"/></svg>`
+  },
+  coral:{
+    label:"珊瑚礁", emoji:"🐚",
+    light:{'--bg':'#fdf6f0','--surface':'#ffffff','--surface-2':'#fdece2','--text':'#4a3a33','--text-soft':'#a68d80','--border':'#f5e0d3','--peach':'#ffb0a0','--peach-deep':'#ef6144','--mint':'#bfe9e2','--mint-deep':'#25bdae','--sky':'#a9ddf0','--sky-deep':'#2ba9d6','--yellow':'#ffd58a','--danger':'#d94444','--shadow':'0 8px 24px rgba(200,130,110,.20)','--shadow-sm':'0 3px 10px rgba(200,130,110,.16)','--hero-grad':'linear-gradient(135deg,#ff9e8a,#ffd7a8)','--hero-text':'#6b2f22','--on-text':'#6b2f22','--photo-grad':'linear-gradient(135deg,#a9ddf0,#bfe9e2)','--photo-text':'#1c4a4a'},
+    dark:{'--bg':'#26201c','--surface':'#322a26','--surface-2':'#3c322d','--text':'#f4e9e2','--text-soft':'#c3a89c','--border':'#4a3d37','--peach':'#ff8f7a','--peach-deep':'#ff7d63','--mint':'#4fd0c2','--mint-deep':'#63dccf','--sky':'#7fc9e8','--sky-deep':'#9bd8f2','--yellow':'#ffd97a','--danger':'#ff8f8f','--shadow':'0 8px 24px rgba(0,0,0,.40)','--shadow-sm':'0 3px 10px rgba(0,0,0,.34)','--hero-grad':'linear-gradient(135deg,#ff8f7a,#ffc78f)','--hero-text':'#3a1810','--on-text':'#3a1810','--photo-grad':'linear-gradient(135deg,#7fc9e8,#4fd0c2)','--photo-text':'#0e2626'},
+    chart:["#ef6144","#25bdae","#2ba9d6","#ff9e8a","#ffc94d","#9b8ce0","#4ecdc4","#ffa9b0","#7fb8e6","#ffb570"],
+    floaty:["🎉","✈️","🐚","🌺","🏝️","🍹"],
+    meta:{light:"#fdf6f0",dark:"#26201c"},
+    icon:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#ef6144"/><circle cx="360" cy="148" r="44" fill="#ffe4b0"/><path d="M60 402 L200 208 L300 340 L360 268 L452 402 Z" fill="#ffffff"/><path d="M60 402 L200 208 L250 278 L150 402 Z" fill="#bfe9e2"/><path d="M40 430 q40 -26 80 0 t80 0 t80 0 t80 0 t80 0" stroke="#ffffff" stroke-width="16" fill="none" stroke-linecap="round" opacity="0.9"/></svg>`
+  },
+  washi:{
+    label:"和紙彩", emoji:"🌸",
+    light:{'--bg':'#faf8f4','--surface':'#ffffff','--surface-2':'#f2eef7','--text':'#40384a','--text-soft':'#9a8fa8','--border':'#ece4f0','--peach':'#b7abdf','--peach-deep':'#7d6cbb','--mint':'#cfe8c6','--mint-deep':'#7cb063','--sky':'#a9d8ec','--sky-deep':'#4fa3cf','--yellow':'#ffdd85','--danger':'#e0728a','--shadow':'0 8px 24px rgba(140,120,170,.20)','--shadow-sm':'0 3px 10px rgba(140,120,170,.16)','--hero-grad':'linear-gradient(135deg,#bcaae6,#ffcedd 52%,#ffe6a8)','--hero-text':'#4a3d5a','--on-text':'#3a2f52','--photo-grad':'linear-gradient(135deg,#a9d8ec,#cfe8c6)','--photo-text':'#33415a'},
+    dark:{'--bg':'#1f1b26','--surface':'#2a2533','--surface-2':'#332d3f','--text':'#efe9f2','--text-soft':'#b7aac6','--border':'#3f3850','--peach':'#a99add','--peach-deep':'#b6a6e6','--mint':'#8fce78','--mint-deep':'#a2dd8c','--sky':'#7fc4e6','--sky-deep':'#9bd5f0','--yellow':'#ffd97a','--danger':'#f08faa','--shadow':'0 8px 24px rgba(0,0,0,.40)','--shadow-sm':'0 3px 10px rgba(0,0,0,.34)','--hero-grad':'linear-gradient(135deg,#8f7fc6,#c98fb0 52%,#d6b878)','--hero-text':'#1c1630','--on-text':'#1c1630','--photo-grad':'linear-gradient(135deg,#7fc4e6,#8fce78)','--photo-text':'#16202e'},
+    chart:["#7cb063","#ef8fa8","#8172bd","#f0c14b","#5b9bd5","#e8894a","#b8a7e0","#9cc06f","#ef7f9e","#5c6bc0"],
+    floaty:["🎉","🌸","🍡","🏮","🍵","✨"],
+    meta:{light:"#faf8f4",dark:"#1f1b26"},
+    perCatColor:true,
+    icon:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#8172bd"/><circle cx="360" cy="148" r="44" fill="#ffe6a8"/><path d="M60 402 L200 208 L300 340 L360 268 L452 402 Z" fill="#ffffff"/><path d="M60 402 L200 208 L250 278 L150 402 Z" fill="#f2a6c0"/><circle cx="150" cy="360" r="12" fill="#ffe6a8"/><circle cx="410" cy="330" r="10" fill="#cfe8c6"/></svg>`
+  },
+  forest:{
+    label:"森林", emoji:"🌲",
+    light:{'--bg':'#f4f7ec','--surface':'#ffffff','--surface-2':'#eaf0dd','--text':'#33402b','--text-soft':'#899877','--border':'#dde6cb','--peach':'#a8cf8c','--peach-deep':'#57892f','--mint':'#cfe3bc','--mint-deep':'#6aa84f','--sky':'#bcdccb','--sky-deep':'#3f8f7a','--yellow':'#f1d999','--danger':'#d5675a','--shadow':'0 8px 24px rgba(110,140,80,.20)','--shadow-sm':'0 3px 10px rgba(110,140,80,.16)','--hero-grad':'linear-gradient(135deg,#8fbf6a,#dbe6a6)','--hero-text':'#2c3d22','--on-text':'#2c3d22','--photo-grad':'linear-gradient(135deg,#bcdccb,#cfe3bc)','--photo-text':'#2c3d22'},
+    dark:{'--bg':'#1b2317','--surface':'#252f1e','--surface-2':'#2e3925','--text':'#e8efdc','--text-soft':'#a7b894','--border':'#3a4630','--peach':'#6aa84f','--peach-deep':'#87c765','--mint':'#7cbf6a','--mint-deep':'#9bd881','--sky':'#7cb39d','--sky-deep':'#95c9b4','--yellow':'#e8cd88','--danger':'#f0897a','--shadow':'0 8px 24px rgba(0,0,0,.40)','--shadow-sm':'0 3px 10px rgba(0,0,0,.34)','--hero-grad':'linear-gradient(135deg,#5f8f42,#9cb861)','--hero-text':'#12210b','--on-text':'#12210b','--photo-grad':'linear-gradient(135deg,#7cb39d,#7cbf6a)','--photo-text':'#12210b'},
+    chart:["#57892f","#d98e4a","#3f8f7a","#9cc06f","#c96a4f","#8a7bb0","#6aa84f","#5b9bd5","#cfae5e","#7fa66a"],
+    floaty:["🎉","🌲","🍃","🦌","🍄","⛺"],
+    meta:{light:"#c7dcae",dark:"#1b2317"},
+    icon:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#57892f"/><circle cx="368" cy="146" r="40" fill="#f3e4ac"/><path d="M256 96 L330 210 L285 210 L360 320 L152 320 L227 210 L182 210 Z" fill="#ffffff"/><path d="M150 300 L214 200 L180 200 L232 128 L200 128 L150 190 Z" fill="#cfe3bc"/><rect x="238" y="320" width="36" height="70" rx="8" fill="#3f5a24"/><rect x="150" y="392" width="212" height="28" rx="14" fill="#cfe3bc"/></svg>`
+  },
+  lemon:{
+    label:"檸檬蘇打", emoji:"🍋",
+    light:{'--bg':'#f2fbf9','--surface':'#ffffff','--surface-2':'#e6f6f1','--text':'#2f4a44','--text-soft':'#83a49a','--border':'#d6ede7','--peach':'#ffe36b','--peach-deep':'#12b3a2','--mint':'#bfe9d0','--mint-deep':'#3fc380','--sky':'#9be0d8','--sky-deep':'#22b0c4','--yellow':'#ffd033','--danger':'#ff6f6f','--shadow':'0 8px 24px rgba(90,180,165,.20)','--shadow-sm':'0 3px 10px rgba(90,180,165,.16)','--hero-grad':'linear-gradient(135deg,#8fe0d4,#ffe36b)','--hero-text':'#1c4a44','--on-text':'#4a3d0c','--photo-grad':'linear-gradient(135deg,#8fe0d4,#bfe9d0)','--photo-text':'#1c4a44'},
+    dark:{'--bg':'#10231f','--surface':'#17322c','--surface-2':'#1f403a','--text':'#e9f6f1','--text-soft':'#9dc4bb','--border':'#2c4d45','--peach':'#ffe07a','--peach-deep':'#3ccabb','--mint':'#6fd6a8','--mint-deep':'#82e6b8','--sky':'#7fd6cc','--sky-deep':'#6fd0dc','--yellow':'#ffde5a','--danger':'#ff8f8f','--shadow':'0 8px 24px rgba(0,0,0,.40)','--shadow-sm':'0 3px 10px rgba(0,0,0,.34)','--hero-grad':'linear-gradient(135deg,#5fd0c2,#ffe07a)','--hero-text':'#0c2d28','--on-text':'#0c2d28','--photo-grad':'linear-gradient(135deg,#5fd0c2,#6fd6a8)','--photo-text':'#0c2d28'},
+    chart:["#12b3a2","#ff8f7a","#ffd033","#3fc380","#2ba9d6","#9b8ce0","#4ecdc4","#ffb547","#f78da7","#a0d468"],
+    floaty:["🎉","🍋","🥤","🫧","🍧","🌴"],
+    meta:{light:"#8fe0d4",dark:"#10231f"},
+    icon:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#12b3a2"/><circle cx="356" cy="150" r="52" fill="#ffe36b"/><path d="M60 402 L200 208 L300 340 L360 268 L452 402 Z" fill="#ffffff"/><path d="M60 402 L200 208 L250 278 L150 402 Z" fill="#bfe9d0"/></svg>`
+  },
+  lavender:{
+    label:"薰衣草天空", emoji:"💜",
+    light:{'--bg':'#f7f5fb','--surface':'#ffffff','--surface-2':'#efecf7','--text':'#40384f','--text-soft':'#948aa6','--border':'#e8e3f1','--peach':'#c9bce8','--peach-deep':'#6f8fe0','--mint':'#d9cdec','--mint-deep':'#a48fd6','--sky':'#a9d8ec','--sky-deep':'#5aa9e6','--yellow':'#ffdd9c','--danger':'#e0728a','--shadow':'0 8px 24px rgba(130,120,180,.20)','--shadow-sm':'0 3px 10px rgba(130,120,180,.16)','--hero-grad':'linear-gradient(135deg,#a9c8f0,#d9c9ec 55%,#ffd8c9)','--hero-text':'#3c3a5a','--on-text':'#33314f','--photo-grad':'linear-gradient(135deg,#a9d8ec,#d9cdec)','--photo-text':'#33415a'},
+    dark:{'--bg':'#1e1c2b','--surface':'#29273a','--surface-2':'#322f45','--text':'#efecf6','--text-soft':'#b3aac6','--border':'#3d3a52','--peach':'#b3a5e6','--peach-deep':'#9d8fe0','--mint':'#b6a5e0','--mint-deep':'#c3b3ec','--sky':'#8fb8e6','--sky-deep':'#a9c8f0','--yellow':'#ffd98a','--danger':'#f08faa','--shadow':'0 8px 24px rgba(0,0,0,.40)','--shadow-sm':'0 3px 10px rgba(0,0,0,.34)','--hero-grad':'linear-gradient(135deg,#7f9fe0,#b3a5e0 55%,#e6a9b8)','--hero-text':'#201d33','--on-text':'#201d33','--photo-grad':'linear-gradient(135deg,#8fb8e6,#b6a5e0)','--photo-text':'#181528'},
+    chart:["#6f8fe0","#e79ab8","#a48fd6","#f0c14b","#5bbfd5","#e8894a","#b8a7e0","#8fb8e6","#ef8fa8","#7c9ee6"],
+    floaty:["🎉","💜","☁️","🌙","🫧","✨"],
+    meta:{light:"#c9d4f0",dark:"#1e1c2b"},
+    icon:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#6f8fe0"/><circle cx="360" cy="150" r="44" fill="#fff0d8"/><path d="M60 402 L200 208 L300 340 L360 268 L452 402 Z" fill="#ffffff"/><path d="M60 402 L200 208 L250 278 L150 402 Z" fill="#d9cdec"/></svg>`
+  }
+};
+
+/* ---------- 主題 / 配色 ---------- */
+function currentMode(){
+  const t = state.settings.theme;
+  return (t==="dark" || (t==="auto" && window.matchMedia("(prefers-color-scheme: dark)").matches)) ? "dark" : "light";
+}
+function activePalette(){ return PALETTES[state.settings.palette] || PALETTES.ocean; }
+function applyTheme(){
+  const mode = currentMode();
+  const pal = activePalette();
+  const vars = pal[mode];
+  const root = document.documentElement;
+  root.setAttribute("data-theme", mode);
+  for(const k in vars) root.style.setProperty(k, vars[k]);
+  if(state.settings.customAccent) root.style.setProperty("--peach-deep", state.settings.customAccent);
+  CHART_COLORS = pal.chart;
+  document.querySelector('meta[name=theme-color]').setAttribute("content", pal.meta[mode]);
+  $("#themeBtn").textContent = mode==="dark" ? "☀️" : "🌙";
+  refreshIcon(pal);
+}
+function refreshIcon(pal){
+  const icon = "data:image/svg+xml," + encodeURIComponent(pal.icon);
+  $("#favicon").href = icon;
+  $("#appleicon").href = icon;
+  const manifest = {
+    name:"日本旅遊記帳", short_name:"旅遊記帳",
+    start_url:"./", scope:"./", display:"standalone",
+    background_color: pal.light['--bg'], theme_color: pal.meta.light,
+    icons:[{src:icon, sizes:"512x512", type:"image/svg+xml", purpose:"any maskable"}]
+  };
+  try{ $("#manifest").href = URL.createObjectURL(new Blob([JSON.stringify(manifest)],{type:"application/manifest+json"})); }catch(e){}
+}
+$("#themeBtn").onclick = ()=>{
+  state.settings.theme = currentMode()==="dark" ? "light" : "dark";
+  save(); applyTheme();
+  if(currentTab()==="set") renderSettings();
+};
+$("#palBtn").onclick = ()=>{
+  const keys = Object.keys(PALETTES);
+  const i = keys.indexOf(state.settings.palette);
+  state.settings.palette = keys[(i+1)%keys.length];
+  save(); applyTheme();
+  toast("配色：" + activePalette().emoji + " " + activePalette().label);
+  if(currentTab()==="set") renderSettings();
+  if(currentTab()==="chart") renderCharts();
+  if(currentTab()==="home") renderHome();
+};
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ()=>{ if(state.settings.theme==="auto") applyTheme(); });
+
+/* ---------- 分頁切換 ---------- */
+function showTab(tab){
+  $$(".view").forEach(v=>v.classList.remove("on"));
+  $("#view-"+tab).classList.add("on");
+  $$("nav.tabbar button[data-tab]").forEach(b=>b.classList.toggle("on", b.dataset.tab===tab));
+  window.scrollTo(0,0);
+  if(tab==="home") renderHome();
+  if(tab==="list") renderList();
+  if(tab==="chart") renderCharts();
+  if(tab==="set") renderSettings();
+}
+$$("nav.tabbar button[data-tab]").forEach(b=> b.onclick = ()=>showTab(b.dataset.tab));
+$("#tabAdd").onclick = ()=> openEntryModal();
+
+/* ============================================================
+   分帳計算
+   分攤方式：平分 = 兩人各一半；個人 = 該付款人自己
+   ============================================================ */
+function calcSettlement(){
+  let myPaid=0, myShare=0;
+  for(const e of state.expenses){
+    const amt = e.amount||0;
+    if(e.payer==="我") myPaid += amt;
+    if(e.split==="平分") myShare += amt/2;
+    else if(e.payer==="我") myShare += amt; // 個人且我付
+  }
+  const balance = myPaid - myShare; // >0 => 我多付了，爸爸要還我；<0 => 我少付了，我要還爸爸
+  return {myPaid, myShare, balance};
+}
+
+/* ============================================================
+   首頁
+   ============================================================ */
+function tripTotal(){ return state.expenses.reduce((s,e)=>s+(e.amount||0),0); }
+function dayTotal(d){ return state.expenses.filter(e=>e.date===d).reduce((s,e)=>s+(e.amount||0),0); }
+function toNT(yen){ return yen * (state.settings.rate||0); }
+
+function renderHome(){
+  const total = tripTotal();
+  $("#heroTotal").textContent = fmtYen(total);
+  $("#heroTotalNT").textContent = "約 " + fmtNT(toNT(total));
+  const td = dayTotal(todayStr());
+  $("#heroToday").textContent = fmtYen(td);
+
+  const bt = state.settings.budgetTotal||0, bd = state.settings.budgetDaily||0;
+  if(bd>0){
+    $("#heroBudgetT").textContent = "今日剩餘";
+    $("#heroBudget").textContent = fmtYen(bd - td);
+  }else if(bt>0){
+    $("#heroBudgetT").textContent = "總預算剩餘";
+    $("#heroBudget").textContent = fmtYen(bt - total);
+  }else{
+    $("#heroBudgetT").textContent = "筆數";
+    $("#heroBudget").textContent = state.expenses.length + " 筆";
+  }
+
+  // 分帳
+  const s = calcSettlement();
+  const nt = v=>fmtNT(toNT(v));
+  let html;
+  if(Math.abs(s.balance) < 1){
+    html = `<div style="font-weight:700">目前剛好打平 🎉</div>`;
+  }else if(s.balance < 0){
+    html = `<div style="font-size:22px;font-weight:700">你要還爸爸 ${fmtYen(-s.balance)}</div>
+            <div class="hint">約 ${nt(-s.balance)}　（爸爸幫你先付了這些，旅程結束再還他）</div>`;
+  }else{
+    html = `<div style="font-size:22px;font-weight:700">爸爸要還你 ${fmtYen(s.balance)}</div>
+            <div class="hint">約 ${nt(s.balance)}　（你先幫爸爸多付了這些）</div>`;
+  }
+  html += `<div class="hint">你總共付了 ${fmtYen(s.myPaid)}，應分攤 ${fmtYen(s.myShare)}</div>`;
+  $("#settleBody").innerHTML = html;
+
+  // 快速按鈕
+  $("#quickRow").innerHTML = state.settings.quickButtons.map((q,i)=>
+    `<button class="quick-btn" data-q="${i}">${q.emoji||"⚡"} ${esc(q.label)}</button>`).join("")
+    || `<span class="hint">可到設定新增快速按鈕</span>`;
+  $$("#quickRow .quick-btn").forEach(b=> b.onclick = ()=>{
+    const q = state.settings.quickButtons[+b.dataset.q];
+    openEntryModal(null, {category:q.category, payment:q.payment, payer:q.payer});
+  });
+
+  // 匯率工具
+  $("#rtRate").textContent = state.settings.rate;
+  $("#rtYen").oninput = ()=>{ $("#rtOut").textContent = fmtNT(toNT(+$("#rtYen").value||0)); };
+
+  // 分類佔比
+  const byCat = {};
+  state.expenses.forEach(e=> byCat[e.category] = (byCat[e.category]||0) + (e.amount||0));
+  const cats = Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  $("#homeCats").innerHTML = cats.length ? cats.map(([c,v],i)=>{
+    const pct = total ? Math.round(v/total*100) : 0;
+    return `<div style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;font-weight:700;font-size:14px">
+        <span>${catEmoji(c)} ${esc(c)}</span><span>${fmtYen(v)} · ${pct}%</span></div>
+      <div class="progress"><i style="width:${pct}%;background:${catColor(c,i)}"></i></div></div>`;
+  }).join("") : `<div class="hint">還沒有資料</div>`;
+
+  // 最近
+  const recent = [...state.expenses].sort(cmpEntry).slice(0,6);
+  $("#recentList").innerHTML = recent.length ? recent.map(rowHtml).join("") : `<div class="hint">還沒有記錄，點下方 ＋ 開始記帳 ✏️</div>`;
+  $$("#recentList .row").forEach(r=> r.onclick = ()=> openEntryModal(r.dataset.id));
+
+  renderBackupBanner();
+}
+
+function catEmoji(name){
+  const c = state.settings.categories.find(x=>x.name===name);
+  return c ? c.emoji : "•";
+}
+// 依分類取固定顏色（和紙彩主題會用；其他主題照排序給色）
+function catColor(name, fallbackIndex){
+  if(activePalette().perCatColor){
+    let i = state.settings.categories.findIndex(x=>x.name===name);
+    if(i<0){ i=0; for(const ch of String(name)) i=(i*31+ch.charCodeAt(0))>>>0; }
+    return CHART_COLORS[i % CHART_COLORS.length];
+  }
+  return CHART_COLORS[(fallbackIndex||0) % CHART_COLORS.length];
+}
+function cmpEntry(a,b){
+  return (b.date+ (b.time||"00:00")).localeCompare(a.date+(a.time||"00:00")) || (b.createdAt||"").localeCompare(a.createdAt||"");
+}
+function rowHtml(e){
+  return `<div class="row" data-id="${e.id}">
+    <div class="emoji">${catEmoji(e.category)}</div>
+    <div class="mid">
+      <div class="top">${esc(e.store||e.category||"（未命名）")}</div>
+      <div class="bot">${e.date}${e.city?" · "+esc(e.city):""}${e.payer?" · "+esc(e.payer)+"付":""}</div>
+    </div>
+    <div class="amt">${fmtYen(e.amount)}<small>${fmtNT(e.amount*(e.rate||state.settings.rate))}</small></div>
+  </div>`;
+}
+
+function renderBackupBanner(){
+  const box = $("#backupBanner"); box.innerHTML = "";
+  if(!state.settings.backupReminder || state.expenses.length===0) return;
+  if(state.settings.lastExport === todayStr()) return;
+  const b = document.createElement("div");
+  b.className = "banner";
+  b.innerHTML = `<span>💾 今天還沒備份喔，記得匯出一次</span><button>去匯出</button>`;
+  b.querySelector("button").onclick = ()=> showTab("set");
+  box.appendChild(b);
+}
+
+/* ============================================================
+   記一筆 / 編輯 Modal
+   ============================================================ */
+function autoCity(date){
+  for(const it of state.settings.itinerary){
+    if(it.start && it.end && date>=it.start && date<=it.end) return it.city;
+  }
+  return "";
+}
+
+function openEntryModal(id=null, prefill={}){
+  editingId = id;
+  const e = id ? state.expenses.find(x=>x.id===id) : null;
+  const d = e || Object.assign({
+    date: todayStr(), time: nowTime(), store:"", city:"", amount:"",
+    category: state.settings.categories[0]?.name || "其他",
+    payment: state.settings.defaultPayment, payer: state.settings.defaultPayer,
+    split:"平分", note:"", tags:[]
+  }, prefill);
+  if(pendingPhoto){ Object.assign(d, pendingPhoto); pendingPhoto = null; }
+  if(!e && !d.city) d.city = autoCity(d.date);
+
+  const catBtns = state.settings.categories.map(c=>
+    `<button data-cat="${esc(c.name)}" class="${c.name===d.category?"on":""}"><span class="e">${c.emoji}</span>${esc(c.name)}</button>`).join("");
+  const cityOpts = `<option value="">（不指定）</option>` + state.settings.cities.map(c=>
+    `<option ${c===d.city?"selected":""}>${esc(c)}</option>`).join("");
+
+  const m = document.createElement("div");
+  m.className = "modal-bg";
+  m.innerHTML = `<div class="modal">
+    <div class="modal-head">
+      <h3>${id?"✏️ 編輯記錄":"✏️ 記一筆"}</h3>
+      <button data-close>✕</button>
+    </div>
+
+    ${id?"":`<button class="btn-photo" id="mPhoto">📷 拍收據 / 選 Suica 截圖</button>
+    <div class="hint" id="mPhotoHint" style="margin-bottom:12px">辨識後會自動填欄位，你確認再儲存</div>`}
+
+    <div class="field amount-input">
+      <label>金額（日圓）</label>
+      <input type="number" id="mAmount" inputmode="numeric" placeholder="0" value="${d.amount||""}">
+      <div class="hint" id="mNT"></div>
+    </div>
+
+    <div class="field">
+      <label>分類</label>
+      <div class="cat-grid" id="mCatGrid">${catBtns}</div>
+    </div>
+
+    <div class="row2">
+      <div class="field"><label>日期</label><input type="date" id="mDate" value="${d.date}"></div>
+      <div class="field"><label>時間</label><input type="time" id="mTime" value="${d.time||""}"></div>
+    </div>
+
+    <div class="field"><label>店名 / 地點</label><input type="text" id="mStore" value="${esc(d.store)}" placeholder="例：唐吉訶德 澀谷店"></div>
+
+    <div class="row2">
+      <div class="field"><label>城市 / 區域</label><select id="mCity">${cityOpts}</select></div>
+      <div class="field"><label>付款方式</label>
+        <div class="seg" id="mPay">
+          ${["現金","Suica","信用卡","其他"].map(p=>`<button data-p="${p}" class="${p===d.payment?"on":""}">${p}</button>`).join("")}
+        </div>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field"><label>付款人</label>
+        <div class="seg" id="mPayer">
+          ${["爸爸","我"].map(p=>`<button data-pr="${p}" class="${p===d.payer?"on":""}">${p}</button>`).join("")}
+        </div>
+      </div>
+      <div class="field"><label>分攤</label>
+        <div class="seg" id="mSplit">
+          ${[["平分","兩人平分"],["個人","個人不分攤"]].map(([v,t])=>`<button data-sp="${v}" class="${v===d.split?"on":""}">${t}</button>`).join("")}
+        </div>
+      </div>
+    </div>
+
+    <div class="field"><label>標籤（用空格分隔，例：爸爸生日 同事伴手禮）</label>
+      <input type="text" id="mTags" value="${esc((d.tags||[]).join(' '))}"></div>
+
+    <div class="field"><label>備註</label><textarea id="mNote" placeholder="想寫什麼都可以">${esc(d.note)}</textarea></div>
+
+    <button class="btn-primary" id="mSave" style="margin-top:6px">${id?"儲存變更":"記下來 ✨"}</button>
+    ${id?`<button class="btn-ghost" id="mDelete" style="margin-top:10px;color:var(--danger);border-color:var(--danger)">刪除這筆</button>`:""}
+  </div>`;
+
+  $("#modalRoot").innerHTML = "";
+  $("#modalRoot").appendChild(m);
+
+  const sel = {payment:d.payment, payer:d.payer, split:d.split, category:d.category};
+  const updNT = ()=>{ const v=+$("#mAmount",m).value||0; $("#mNT",m).textContent = v?("約 "+fmtNT(v*(state.settings.rate||0))):""; };
+  updNT();
+  $("#mAmount",m).oninput = updNT;
+
+  $$("#mCatGrid button",m).forEach(b=> b.onclick = ()=>{
+    sel.category = b.dataset.cat;
+    $$("#mCatGrid button",m).forEach(x=>x.classList.toggle("on", x===b));
+  });
+  const segPick = (wrap,key,attr)=> $$(wrap+" button",m).forEach(b=> b.onclick = ()=>{
+    sel[key] = b.dataset[attr];
+    $$(wrap+" button",m).forEach(x=>x.classList.toggle("on", x===b));
+  });
+  segPick("#mPay","payment","p");
+  segPick("#mPayer","payer","pr");
+  segPick("#mSplit","split","sp");
+
+  $("#mCity",m) && ( $("#mDate",m).onchange = ()=>{
+    const c = autoCity($("#mDate",m).value);
+    if(c) $("#mCity",m).value = c;
+  });
+
+  m.querySelector("[data-close]").onclick = closeModal;
+  m.onclick = ev=>{ if(ev.target===m) closeModal(); };
+
+  if($("#mPhoto",m)) $("#mPhoto",m).onclick = ()=> startPhoto();
+
+  $("#mSave",m).onclick = ()=>{
+    const amount = Math.round(+$("#mAmount",m).value||0);
+    if(!amount){ toast("請輸入金額"); return; }
+    const rec = {
+      id: id || uid(),
+      date: $("#mDate",m).value || todayStr(),
+      time: $("#mTime",m).value || "",
+      store: $("#mStore",m).value.trim(),
+      city: $("#mCity",m).value,
+      amount,
+      rate: state.settings.rate,
+      category: sel.category,
+      payment: sel.payment,
+      payer: sel.payer,
+      split: sel.split,
+      tags: $("#mTags",m).value.trim().split(/\s+/).filter(Boolean),
+      note: $("#mNote",m).value.trim(),
+      source: (e && e.source) || d.source || "手動",
+      createdAt: (e && e.createdAt) || new Date().toISOString()
+    };
+    if(id){
+      const i = state.expenses.findIndex(x=>x.id===id);
+      rec.rate = state.expenses[i].rate || state.settings.rate; // 編輯不動歷史匯率
+      state.expenses[i] = rec;
+      toast("已更新");
+    }else{
+      state.expenses.push(rec);
+      { const fl = activePalette().floaty; floaty(fl[Math.floor(Math.random()*fl.length)]); }
+      toast("記好了！");
+    }
+    save(); closeModal(); showTab("home");
+  };
+
+  if(id){
+    $("#mDelete",m).onclick = ()=>{
+      if(!confirm("確定刪除這筆記錄？")) return;
+      state.expenses = state.expenses.filter(x=>x.id!==id);
+      save(); closeModal(); showTab(currentTab());
+      toast("已刪除");
+    };
+  }
+}
+function closeModal(){ $("#modalRoot").innerHTML = ""; }
+function currentTab(){ return ($$(".view.on")[0]?.id||"view-home").replace("view-",""); }
+
+/* ============================================================
+   拍照辨識（Google Gemini）
+   ============================================================ */
+const RECEIPT_PROMPT = `你是日本旅遊記帳 App 的收據解析器。圖片可能是「日本商店收據」或「Suica/PASMO IC 卡交易紀錄截圖」。請只回傳 JSON，不要 markdown、不要說明文字。
+
+若為商店收據，回傳：
+{"type":"receipt","date":"YYYY-MM-DD 或 null","time":"HH:MM 或 null","store":"店名(盡量翻成繁體中文，原文放括號)","amount_jpy":總金額整數,"category":"從這幾個擇一:餐飲,交通,住宿,購物,門票/景點,超商,咖啡/甜點,伴手禮,其他","payment":"現金|Suica|信用卡|其他|null","note":"品項簡述(繁體中文)"}
+
+若為 Suica/IC 卡交易截圖，回傳：
+{"type":"suica","entries":[{"date":"YYYY-MM-DD 或 null","time":"HH:MM 或 null","store":"進出站或店名 例:東京→新宿","amount_jpy":正整數(消費金額),"category":"交通 或 超商 等","payment":"Suica","note":""}]}
+
+規則：金額為日圓整數、不要小數。略過「チャージ/入金/加值」這類儲值紀錄(那不是消費)。只回傳合法 JSON。`;
+
+function startPhoto(){
+  if(!state.settings.apiKey){
+    toast("請先到設定貼上 Gemini API 金鑰");
+    closeModal(); showTab("set"); return;
+  }
+  $("#photoInput").value = "";
+  $("#photoInput").click();
+}
+$("#photoInput").onchange = async (ev)=>{
+  const file = ev.target.files[0];
+  if(!file) return;
+  const hint = $("#mPhotoHint");
+  const btn = $("#mPhoto");
+  if(btn){ btn.innerHTML = `<span class="spin"></span> 辨識中…`; btn.disabled = true; }
+  try{
+    const b64 = await fileToJpegBase64(file);
+    const result = await callGemini(b64);
+    if(result.type === "suica" && Array.isArray(result.entries)){
+      closeModal();
+      openSuicaModal(result.entries);
+    }else{
+      // 收據 → 填回表單
+      pendingPhoto = {
+        store: result.store || "",
+        amount: result.amount_jpy || "",
+        category: matchCategory(result.category),
+        payment: normPayment(result.payment),
+        note: result.note || "",
+        date: validDate(result.date) || todayStr(),
+        time: result.time || nowTime(),
+        source: "收據"
+      };
+      openEntryModal(null);
+      toast("辨識完成，請確認欄位");
+    }
+  }catch(err){
+    console.error(err);
+    if(btn){ btn.innerHTML = `📷 拍收據 / 選 Suica 截圖`; btn.disabled = false; }
+    if(hint) hint.textContent = "";
+    toast("辨識失敗：" + (err.message||err).toString().slice(0,80));
+  }
+};
+
+function validDate(s){ return /^\d{4}-\d{2}-\d{2}$/.test(s||"") ? s : null; }
+const CAT_KEYWORDS = [
+  ["餐飲",/餐飲|食事|飲食|レストラン|居酒屋|食堂|ラーメン|定食|壽司|寿司|燒肉|焼肉|dining|food|meal/i],
+  ["交通",/交通|電車|地下鉄|バス|タクシー|新幹線|切符|IC|運賃|train|bus|taxi|transit/i],
+  ["住宿",/住宿|ホテル|旅館|宿泊|民宿|hotel|hostel|lodging|stay/i],
+  ["超商",/超商|便利|コンビニ|セブン|ローソン|ファミマ|convenience|7-eleven|lawson|familymart/i],
+  ["咖啡/甜點",/咖啡|甜點|カフェ|スイーツ|喫茶|コーヒー|パフェ|coffee|cafe|dessert|sweets/i],
+  ["伴手禮",/伴手禮|土産|おみやげ|souvenir|gift/i],
+  ["門票/景點",/門票|入場|チケット|拝観|入園|ticket|admission|attraction/i],
+  ["購物",/購物|買物|ショッピング|ドラッグ|唐吉|ドンキ|ユニクロ|shopping|store/i]
+];
+function matchCategory(c){
+  const names = state.settings.categories.map(x=>x.name);
+  if(c){
+    const hit = state.settings.categories.find(x=>x.name===c || c.includes(x.name));
+    if(hit) return hit.name;
+    for(const [name,re] of CAT_KEYWORDS){ if(re.test(c) && names.includes(name)) return name; }
+  }
+  return names.includes("其他") ? "其他" : names[0];
+}
+function normPayment(p){
+  if(!p) return state.settings.defaultPayment;
+  if(/現金|cash/i.test(p)) return "現金";
+  if(/suica|pasmo|ic/i.test(p)) return "Suica";
+  if(/信用|card|クレ/i.test(p)) return "信用卡";
+  return "其他";
+}
+
+async function fileToJpegBase64(file, maxDim=1400, quality=0.82){
+  const img = await new Promise((res,rej)=>{
+    const i = new Image();
+    i.onload = ()=>res(i); i.onerror = rej;
+    i.src = URL.createObjectURL(file);
+  });
+  let {width,height} = img;
+  const scale = Math.min(1, maxDim / Math.max(width,height));
+  width = Math.round(width*scale); height = Math.round(height*scale);
+  const cv = document.createElement("canvas");
+  cv.width = width; cv.height = height;
+  cv.getContext("2d").drawImage(img,0,0,width,height);
+  URL.revokeObjectURL(img.src);
+  return cv.toDataURL("image/jpeg", quality).split(",")[1];
+}
+
+async function callGemini(base64jpeg){
+  const key = state.settings.apiKey;
+  const model = state.settings.model || "gemini-2.5-flash";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
+  const body = {
+    contents:[{parts:[
+      {text: RECEIPT_PROMPT},
+      {inline_data:{mime_type:"image/jpeg", data: base64jpeg}}
+    ]}],
+    generationConfig:{ temperature:0, responseMimeType:"application/json" }
+  };
+  const res = await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  if(!res.ok){
+    const t = await res.text();
+    let msg = res.status + "";
+    try{ msg = JSON.parse(t).error?.message || msg; }catch{}
+    throw new Error(msg);
+  }
+  const data = await res.json();
+  const txt = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  try{ return JSON.parse(txt); }
+  catch{
+    const m = txt.match(/\{[\s\S]*\}/);
+    if(m) return JSON.parse(m[0]);
+    throw new Error("回傳格式看不懂");
+  }
+}
+
+function openSuicaModal(entries){
+  const rows = entries.map((x,i)=>`
+    <div class="entry" style="flex-wrap:wrap">
+      <label style="display:flex;align-items:center;gap:8px;flex:1">
+        <input type="checkbox" data-i="${i}" checked style="width:20px;height:20px">
+        <div class="mid">
+          <div class="top"><input type="text" data-store="${i}" value="${esc(x.store||"")}" style="width:100%;border:none;background:transparent;font-weight:700"></div>
+          <div class="bot">${validDate(x.date)||todayStr()} · ${esc(x.category||"交通")}</div>
+        </div>
+      </label>
+      <input type="number" data-amt="${i}" value="${x.amount_jpy||0}" style="width:90px;text-align:right;font-weight:700;background:var(--surface-2);border:1.5px solid var(--border);border-radius:10px;padding:6px">
+    </div>`).join("");
+  const m = document.createElement("div");
+  m.className = "modal-bg";
+  m.innerHTML = `<div class="modal">
+    <div class="modal-head"><h3>🚃 Suica 交易（${entries.length} 筆）</h3><button data-close>✕</button></div>
+    <div class="hint" style="margin-bottom:10px">取消勾選不想加入的項目，可直接修改金額或名稱</div>
+    ${rows}
+    <button class="btn-primary" id="suicaAdd" style="margin-top:10px">加入勾選的項目</button>
+  </div>`;
+  $("#modalRoot").innerHTML = "";
+  $("#modalRoot").appendChild(m);
+  m.querySelector("[data-close]").onclick = closeModal;
+  $("#suicaAdd",m).onclick = ()=>{
+    let n = 0;
+    $$('input[type=checkbox][data-i]',m).forEach(cb=>{
+      if(!cb.checked) return;
+      const i = cb.dataset.i;
+      const amount = Math.round(+$(`input[data-amt="${i}"]`,m).value||0);
+      if(!amount) return;
+      state.expenses.push({
+        id: uid(),
+        date: validDate(entries[i].date) || todayStr(),
+        time: entries[i].time || "",
+        store: $(`input[data-store="${i}"]`,m).value.trim(),
+        city:"", amount, rate: state.settings.rate,
+        category: matchCategory(entries[i].category || "交通"),
+        payment:"Suica", payer: state.settings.defaultPayer, split:"平分",
+        tags:[], note: entries[i].note||"", source:"Suica 截圖",
+        createdAt: new Date().toISOString()
+      });
+      n++;
+    });
+    save(); closeModal(); showTab("home");
+    floaty("🚃"); toast(`加入了 ${n} 筆`);
+  };
+}
+
+/* ============================================================
+   明細
+   ============================================================ */
+let filters = {search:"", city:"", cat:"", payer:""};
+function renderList(){
+  // 下拉選單
+  const cityOpt = `<option value="">全部城市</option>` + state.settings.cities.map(c=>`<option ${filters.city===c?"selected":""}>${esc(c)}</option>`).join("");
+  const catOpt = `<option value="">全部分類</option>` + state.settings.categories.map(c=>`<option ${filters.cat===c.name?"selected":""}>${esc(c.name)}</option>`).join("");
+  $("#fCity").innerHTML = cityOpt;
+  $("#fCat").innerHTML = catOpt;
+  $("#fSearch").value = filters.search;
+  $("#fPayer").value = filters.payer;
+  $("#fSearch").oninput = ()=>{ filters.search = $("#fSearch").value; drawList(); };
+  $("#fCity").onchange = ()=>{ filters.city = $("#fCity").value; drawList(); };
+  $("#fCat").onchange = ()=>{ filters.cat = $("#fCat").value; drawList(); };
+  $("#fPayer").onchange = ()=>{ filters.payer = $("#fPayer").value; drawList(); };
+  drawList();
+}
+function filteredExpenses(){
+  const q = filters.search.trim().toLowerCase();
+  return state.expenses.filter(e=>{
+    if(filters.city && e.city!==filters.city) return false;
+    if(filters.cat && e.category!==filters.cat) return false;
+    if(filters.payer && e.payer!==filters.payer) return false;
+    if(q){
+      const hay = (e.store+" "+e.note+" "+(e.tags||[]).join(" ")).toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+function drawList(){
+  const list = filteredExpenses().sort(cmpEntry);
+  if(!list.length){
+    $("#listBody").innerHTML = `<div class="empty"><span class="e">🧳</span>沒有符合的記錄</div>`;
+    return;
+  }
+  const byDay = {};
+  list.forEach(e=> (byDay[e.date] = byDay[e.date]||[]).push(e));
+  const days = Object.keys(byDay).sort().reverse();
+  $("#listBody").innerHTML = days.map(d=>{
+    const items = byDay[d];
+    const sum = items.reduce((s,e)=>s+(e.amount||0),0);
+    return `<div class="day-group">
+      <div class="day-head"><span class="d">${d}（${weekday(d)}）</span><span class="s">${fmtYen(sum)} · ${fmtNT(toNT(sum))}</span></div>
+      ${items.map(entryHtml).join("")}
+    </div>`;
+  }).join("");
+  $$("#listBody .entry").forEach(el=> el.onclick = ()=> openEntryModal(el.dataset.id));
+}
+function weekday(d){ return ["日","一","二","三","四","五","六"][new Date(d+"T00:00").getDay()]; }
+function entryHtml(e){
+  const tags = (e.tags||[]).map(t=>`<span class="tag">#${esc(t)}</span>`).join("");
+  return `<div class="entry" data-id="${e.id}">
+    <div class="emoji">${catEmoji(e.category)}</div>
+    <div class="mid">
+      <div class="top">${esc(e.store||e.category||"（未命名）")}</div>
+      <div class="bot">
+        <span>${e.time||""}</span><span>${esc(e.payment)}</span><span>${esc(e.payer)}付</span>
+        <span>${e.split==="平分"?"平分":"個人"}</span>${e.city?`<span>${esc(e.city)}</span>`:""}${tags}
+        ${e.source&&e.source!=="手動"?`<span class="tag">${esc(e.source)}</span>`:""}
+      </div>
+    </div>
+    <div class="amt">${fmtYen(e.amount)}<small>${fmtNT(e.amount*(e.rate||state.settings.rate))}</small></div>
+  </div>`;
+}
+
+/* ============================================================
+   圖表
+   ============================================================ */
+let CHART_COLORS = ["#17b3a6","#ff8f7a","#2ba9d6","#3fc380","#ffcf5c","#9b8ce0","#4ecdc4","#7fb8e6","#f78da7","#a0d468"];
+function renderCharts(){
+  const exp = state.expenses;
+  const total = exp.reduce((s,e)=>s+(e.amount||0),0);
+
+  // 甜甜圈
+  const byCat = {};
+  exp.forEach(e=> byCat[e.category] = (byCat[e.category]||0)+(e.amount||0));
+  const cats = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+  const svg = $("#donut");
+  if(!total){ svg.innerHTML = `<text x="90" y="95" text-anchor="middle" fill="var(--text-soft)">沒有資料</text>`; $("#donutLegend").innerHTML=""; }
+  else{
+    let acc = 0; const R=70, C=2*Math.PI*R;
+    svg.innerHTML = `<circle cx="90" cy="90" r="70" fill="none" stroke="var(--border)" stroke-width="28"/>` +
+      cats.map(([c,v],i)=>{
+        const frac = v/total;
+        const el = `<circle cx="90" cy="90" r="70" fill="none" stroke="${catColor(c,i)}" stroke-width="28"
+          stroke-dasharray="${(frac*C).toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${(-acc*C).toFixed(2)}"
+          transform="rotate(-90 90 90)"/>`;
+        acc += frac; return el;
+      }).join("") +
+      `<text x="90" y="84" text-anchor="middle" font-weight="700" font-size="15" fill="var(--text)">${fmtYen(total)}</text>
+       <text x="90" y="104" text-anchor="middle" font-size="11" fill="var(--text-soft)">${fmtNT(toNT(total))}</text>`;
+    $("#donutLegend").innerHTML = cats.map(([c,v],i)=>
+      `<div class="li"><span class="dot" style="background:${catColor(c,i)}"></span>
+       ${catEmoji(c)} ${esc(c)}<span class="pct">${fmtYen(v)} · ${Math.round(v/total*100)}%</span></div>`).join("");
+  }
+
+  // 每日長條
+  const byDay = {};
+  exp.forEach(e=> byDay[e.date] = (byDay[e.date]||0)+(e.amount||0));
+  const days = Object.keys(byDay).sort();
+  const max = Math.max(1, ...Object.values(byDay));
+  $("#dailyBars").innerHTML = days.map(d=>{
+    const h = Math.round(byDay[d]/max*100);
+    return `<div class="b ${d===todayStr()?"today":""}" style="height:${h}%" title="${d}: ${fmtYen(byDay[d])}"></div>`;
+  }).join("") || `<div class="hint">沒有資料</div>`;
+  $("#dailyLabels").innerHTML = days.map(d=>`<span>${d.slice(5)}</span>`).join("");
+
+  // 城市
+  const byCity = {};
+  exp.forEach(e=>{ const k = e.city||"（未分類）"; byCity[k] = (byCity[k]||0)+(e.amount||0); });
+  const cityArr = Object.entries(byCity).sort((a,b)=>b[1]-a[1]);
+  $("#cityStats").innerHTML = cityArr.length ? cityArr.map(([c,v])=>
+    `<div class="row"><div class="emoji">🏙️</div><div class="mid"><div class="top">${esc(c)}</div>
+     <div class="bot">${total?Math.round(v/total*100):0}% of 總花費</div></div>
+     <div class="amt">${fmtYen(v)}<small>${fmtNT(toNT(v))}</small></div></div>`).join("") : `<div class="hint">沒有資料</div>`;
+
+  renderSummary();
+}
+
+function summaryData(){
+  const exp = state.expenses;
+  const total = exp.reduce((s,e)=>s+(e.amount||0),0);
+  const days = [...new Set(exp.map(e=>e.date))].sort();
+  const s = calcSettlement();
+  const byCat = {}; exp.forEach(e=> byCat[e.category]=(byCat[e.category]||0)+(e.amount||0));
+  const topCat = Object.entries(byCat).sort((a,b)=>b[1]-a[1])[0];
+  const most = [...exp].sort((a,b)=>(b.amount||0)-(a.amount||0))[0];
+  const byPay = {}; exp.forEach(e=> byPay[e.payment]=(byPay[e.payment]||0)+(e.amount||0));
+  return {total, count:exp.length, days, s, topCat, most, byPay,
+    avgDay: days.length? total/days.length : 0};
+}
+function renderSummary(){
+  const d = summaryData();
+  if(!d.count){ $("#summaryBody").innerHTML = `<div class="hint">還沒有資料</div>`; return; }
+  const nt = v=>fmtNT(toNT(v));
+  $("#summaryBody").innerHTML = `
+    <div class="stat-grid">
+      <div class="stat"><div class="t">總花費</div><div class="v">${fmtYen(d.total)}</div><div class="hint">${nt(d.total)}</div></div>
+      <div class="stat"><div class="t">總筆數</div><div class="v">${d.count} 筆</div></div>
+      <div class="stat"><div class="t">天數</div><div class="v">${d.days.length} 天</div></div>
+      <div class="stat"><div class="t">平均每天</div><div class="v small">${fmtYen(d.avgDay)}</div></div>
+      <div class="stat"><div class="t">花最多的分類</div><div class="v small">${d.topCat?catEmoji(d.topCat[0])+" "+esc(d.topCat[0]):"—"}</div><div class="hint">${d.topCat?fmtYen(d.topCat[1]):""}</div></div>
+      <div class="stat"><div class="t">最貴一筆</div><div class="v small">${d.most?esc(d.most.store||d.most.category):"—"}</div><div class="hint">${d.most?fmtYen(d.most.amount):""}</div></div>
+    </div>
+    <div class="hint" style="margin-top:10px">
+      分帳：${Math.abs(d.s.balance)<1?"打平":(d.s.balance<0?`旅程結束你要還爸爸 ${fmtYen(-d.s.balance)}（${nt(-d.s.balance)}）`:`爸爸要還你 ${fmtYen(d.s.balance)}（${nt(d.s.balance)}）`)}
+    </div>`;
+}
+$("#btnSummaryHtml").onclick = ()=>{
+  const d = summaryData();
+  if(!d.count){ toast("沒有資料"); return; }
+  const nt = v=>fmtNT(toNT(v));
+  const rows = state.expenses.slice().sort(cmpEntry).map(e=>
+    `<tr><td>${e.date}</td><td>${esc(e.store||"")}</td><td>${esc(e.category)}</td><td style="text-align:right">${fmtYen(e.amount)}</td><td>${esc(e.payer)}</td></tr>`).join("");
+  const html = `<!doctype html><meta charset="utf-8"><title>日本旅遊回顧</title>
+  <style>body{font-family:sans-serif;max-width:640px;margin:24px auto;padding:0 16px;color:#4c4038}
+  h1{color:#f5825f}table{width:100%;border-collapse:collapse;font-size:14px}td,th{border-bottom:1px solid #eee;padding:6px}
+  .box{background:#fff2e8;border-radius:16px;padding:16px;margin:12px 0}</style>
+  <h1>🗾 日本旅遊回顧</h1>
+  <div class="box">
+   <b>總花費：</b>${fmtYen(d.total)}（約 ${nt(d.total)}）<br>
+   <b>總筆數：</b>${d.count} 筆　<b>天數：</b>${d.days.length} 天　<b>平均每天：</b>${fmtYen(d.avgDay)}<br>
+   <b>花最多分類：</b>${d.topCat?esc(d.topCat[0])+" "+fmtYen(d.topCat[1]):"—"}<br>
+   <b>最貴一筆：</b>${d.most?esc(d.most.store||d.most.category)+" "+fmtYen(d.most.amount):"—"}<br>
+   <b>分帳：</b>${Math.abs(d.s.balance)<1?"打平":(d.s.balance<0?`你要還爸爸 ${fmtYen(-d.s.balance)}`:`爸爸要還你 ${fmtYen(d.s.balance)}`)}
+  </div>
+  <table><thead><tr><th>日期</th><th>店名</th><th>分類</th><th style="text-align:right">日圓</th><th>付款人</th></tr></thead><tbody>${rows}</tbody></table>`;
+  downloadFile("日本旅遊回顧.html", html, "text/html");
+};
+
+/* ============================================================
+   設定
+   ============================================================ */
+function renderSettings(){
+  const s = state.settings;
+  $("#setRate").value = s.rate;
+  $("#setKey").value = s.apiKey;
+  $("#setModel").value = s.model;
+  $("#setBudgetTotal").value = s.budgetTotal||"";
+  $("#setBudgetDaily").value = s.budgetDaily||"";
+  $("#setDefPayer").value = s.defaultPayer;
+  $("#setDefPayment").value = s.defaultPayment;
+  $("#setTheme").value = s.theme;
+  $("#swBackup").classList.toggle("on", !!s.backupReminder);
+  $("#swPin").classList.toggle("on", !!s.pinEnabled);
+
+  bindNum("#setRate","rate",true);
+  bindNum("#setBudgetTotal","budgetTotal");
+  bindNum("#setBudgetDaily","budgetDaily");
+  $("#setKey").onchange = ()=>{ s.apiKey = $("#setKey").value.trim(); save(); };
+  $("#setModel").onchange = ()=>{ s.model = $("#setModel").value; save(); };
+  $("#setDefPayer").onchange = ()=>{ s.defaultPayer = $("#setDefPayer").value; save(); };
+  $("#setDefPayment").onchange = ()=>{ s.defaultPayment = $("#setDefPayment").value; save(); };
+  $("#setTheme").onchange = ()=>{ s.theme = $("#setTheme").value; save(); applyTheme(); };
+  $("#swBackup").onclick = ()=>{ s.backupReminder = !s.backupReminder; save(); $("#swBackup").classList.toggle("on", s.backupReminder); };
+  $("#swPin").onclick = ()=> togglePin();
+
+  renderPalettes();
+  $("#setAccent").value = s.customAccent || activePalette().light['--peach-deep'];
+  $("#setAccent").oninput = ()=>{ s.customAccent = $("#setAccent").value; save(); applyTheme(); };
+  $("#btnClearAccent").onclick = ()=>{ s.customAccent = ""; save(); applyTheme(); renderSettings(); toast("已還原主題主色"); };
+
+  renderItinEditor();
+  renderCatEditor();
+  renderCityEditor();
+  renderQuickEditor();
+}
+function renderPalettes(){
+  const box = $("#paletteGrid");
+  box.innerHTML = Object.entries(PALETTES).map(([k,p])=>`
+    <button class="pal ${k===state.settings.palette?"on":""}" data-p="${k}">
+      <span class="sw">
+        <i style="background:${p.light['--peach-deep']}"></i>
+        <i style="background:${p.light['--sky']}"></i>
+        <i style="background:${p.light['--yellow']}"></i>
+      </span>
+      <span>${p.emoji} ${p.label}</span>
+    </button>`).join("");
+  $$(".pal",box).forEach(b=> b.onclick = ()=>{
+    state.settings.palette = b.dataset.p;
+    state.settings.customAccent = "";
+    save(); applyTheme(); renderSettings();
+    toast("配色：" + activePalette().emoji + " " + activePalette().label);
+  });
+}
+function bindNum(sel,key,float){
+  $(sel).onchange = ()=>{
+    const v = float ? parseFloat($(sel).value) : parseInt($(sel).value,10);
+    state.settings[key] = isNaN(v)?0:v;
+    save();
+    if(key==="rate"){ $("#rtRate") && ($("#rtRate").textContent = state.settings.rate); }
+  };
+}
+$("#btnRecalc").onclick = ()=>{
+  if(!confirm(`把所有記錄的台幣換算改用目前匯率 ${state.settings.rate}？（日圓金額不變）`)) return;
+  state.expenses.forEach(e=> e.rate = state.settings.rate);
+  save(); toast("已重算");
+};
+$("#btnTestKey").onclick = async ()=>{
+  const key = $("#setKey").value.trim();
+  if(!key){ toast("請先貼上金鑰"); return; }
+  state.settings.apiKey = key; save();
+  $("#btnTestKey").textContent = "測試中…";
+  try{
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${state.settings.model}:generateContent?key=${encodeURIComponent(key)}`;
+    const res = await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({contents:[{parts:[{text:"回覆 OK 兩個字"}]}]})});
+    if(res.ok) toast("✅ 金鑰可以用！");
+    else { const t=await res.text(); toast("❌ "+ (JSON.parse(t).error?.message||res.status)); }
+  }catch(e){ toast("❌ "+e.message); }
+  $("#btnTestKey").textContent = "測試金鑰是否可用";
+};
+
+function renderItinEditor(){
+  const box = $("#itinEditor");
+  box.innerHTML = state.settings.itinerary.map((it,i)=>`
+    <div class="row2" style="margin-bottom:6px;align-items:center">
+      <input type="text" data-ic="${i}" value="${esc(it.city)}" placeholder="城市" style="background:var(--surface-2);border:1.5px solid var(--border);border-radius:10px;padding:8px">
+      <div style="display:flex;gap:4px;align-items:center">
+        <input type="date" data-is="${i}" value="${it.start||""}" style="flex:1;background:var(--surface-2);border:1.5px solid var(--border);border-radius:10px;padding:6px;font-size:13px">
+        <input type="date" data-ie="${i}" value="${it.end||""}" style="flex:1;background:var(--surface-2);border:1.5px solid var(--border);border-radius:10px;padding:6px;font-size:13px">
+        <button data-idel="${i}" style="color:var(--danger);font-weight:700;padding:4px">✕</button>
+      </div>
+    </div>`).join("") || `<div class="hint">尚未設定行程段（選填）</div>`;
+  $$('[data-ic]',box).forEach(el=> el.onchange=()=>{ state.settings.itinerary[el.dataset.ic].city = el.value; save(); });
+  $$('[data-is]',box).forEach(el=> el.onchange=()=>{ state.settings.itinerary[el.dataset.is].start = el.value; save(); });
+  $$('[data-ie]',box).forEach(el=> el.onchange=()=>{ state.settings.itinerary[el.dataset.ie].end = el.value; save(); });
+  $$('[data-idel]',box).forEach(el=> el.onclick=()=>{ state.settings.itinerary.splice(el.dataset.idel,1); save(); renderItinEditor(); });
+}
+$("#btnAddItin").onclick = ()=>{
+  state.settings.itinerary.push({city:state.settings.cities[0]||"",start:"",end:""});
+  save(); renderItinEditor();
+};
+
+function renderCatEditor(){
+  const box = $("#catEditor");
+  box.innerHTML = state.settings.categories.map((c,i)=>
+    `<span class="chip">${c.emoji} ${esc(c.name)} <button data-del="${i}">✕</button></span>`).join("");
+  $$("[data-del]",box).forEach(b=> b.onclick = ()=>{
+    if(state.settings.categories.length<=1) return;
+    state.settings.categories.splice(b.dataset.del,1); save(); renderCatEditor();
+  });
+}
+$("#btnAddCat").onclick = ()=>{
+  const emoji = $("#newCatEmoji").value.trim()||"•";
+  const name = $("#newCatName").value.trim();
+  if(!name) return;
+  state.settings.categories.push({emoji,name});
+  $("#newCatEmoji").value=""; $("#newCatName").value="";
+  save(); renderCatEditor();
+};
+
+function renderCityEditor(){
+  const box = $("#cityEditor");
+  box.innerHTML = state.settings.cities.map((c,i)=>
+    `<span class="chip">${esc(c)} <button data-del="${i}">✕</button></span>`).join("");
+  $$("[data-del]",box).forEach(b=> b.onclick = ()=>{
+    state.settings.cities.splice(b.dataset.del,1); save(); renderCityEditor();
+  });
+}
+$("#btnAddCity").onclick = ()=>{
+  const v = $("#newCity").value.trim();
+  if(!v) return;
+  state.settings.cities.push(v); $("#newCity").value="";
+  save(); renderCityEditor();
+};
+
+function renderQuickEditor(){
+  const box = $("#quickEditor");
+  const catOpts = state.settings.categories.map(c=>c.name);
+  box.innerHTML = state.settings.quickButtons.map((q,i)=>`
+    <div class="row2" style="margin-bottom:6px;align-items:center">
+      <div style="display:flex;gap:4px">
+        <input type="text" data-qe="${i}" value="${esc(q.emoji||"")}" style="width:44px;text-align:center;background:var(--surface-2);border:1.5px solid var(--border);border-radius:10px;padding:6px">
+        <input type="text" data-ql="${i}" value="${esc(q.label)}" placeholder="名稱" style="flex:1;background:var(--surface-2);border:1.5px solid var(--border);border-radius:10px;padding:6px">
+      </div>
+      <div style="display:flex;gap:4px;align-items:center">
+        <select data-qc="${i}" style="flex:1;background:var(--surface-2);border:1.5px solid var(--border);border-radius:10px;padding:6px;font-size:13px">
+          ${catOpts.map(c=>`<option ${c===q.category?"selected":""}>${esc(c)}</option>`).join("")}
+        </select>
+        <button data-qd="${i}" style="color:var(--danger);font-weight:700;padding:4px">✕</button>
+      </div>
+    </div>`).join("") || `<div class="hint">沒有快速按鈕</div>`;
+  $$('[data-qe]',box).forEach(el=>el.onchange=()=>{ state.settings.quickButtons[el.dataset.qe].emoji=el.value; save(); });
+  $$('[data-ql]',box).forEach(el=>el.onchange=()=>{ state.settings.quickButtons[el.dataset.ql].label=el.value; save(); });
+  $$('[data-qc]',box).forEach(el=>el.onchange=()=>{ state.settings.quickButtons[el.dataset.qc].category=el.value; save(); });
+  $$('[data-qd]',box).forEach(el=>el.onclick=()=>{ state.settings.quickButtons.splice(el.dataset.qd,1); save(); renderQuickEditor(); });
+}
+$("#btnAddQuick").onclick = ()=>{
+  state.settings.quickButtons.push({emoji:"⚡",label:"新按鈕",category:state.settings.categories[0]?.name||"其他",payment:state.settings.defaultPayment,payer:state.settings.defaultPayer});
+  save(); renderQuickEditor();
+};
+
+/* ---------- PIN ---------- */
+function togglePin(){
+  const s = state.settings;
+  if(s.pinEnabled){
+    if(confirm("關閉 PIN 碼鎖？")){ s.pinEnabled=false; s.pin=""; save(); $("#swPin").classList.remove("on"); }
+    return;
+  }
+  const p = prompt("設定一組 4 位數 PIN 碼：");
+  if(p && /^\d{4}$/.test(p)){
+    s.pinEnabled = true; s.pin = p; save();
+    $("#swPin").classList.add("on");
+    toast("已開啟 PIN 鎖");
+  }else if(p!==null){
+    toast("請輸入 4 位數字");
+  }
+}
+
+/* ============================================================
+   匯出 / 匯入
+   ============================================================ */
+function downloadFile(name, content, type){
+  const blob = new Blob([content], {type: type+";charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+}
+function markExported(){ state.settings.lastExport = todayStr(); save(); }
+
+$("#btnExportCsv").onclick = ()=>{
+  if(!state.expenses.length){ toast("沒有資料"); return; }
+  const cols = ["日期","時間","店名","城市","分類","日圓","匯率","台幣","付款方式","付款人","分攤","標籤","來源","備註","建立時間"];
+  const rows = state.expenses.slice().sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time)).map(e=>{
+    const rate = e.rate||state.settings.rate;
+    return [e.date,e.time,e.store,e.city,e.category,e.amount,rate,Math.round(e.amount*rate),
+      e.payment,e.payer,e.split==="平分"?"平分":"個人",(e.tags||[]).join(" "),e.source||"手動",e.note,e.createdAt||""]
+      .map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(",");
+  });
+  downloadFile(`日本旅遊記帳_${todayStr()}.csv`, "﻿"+cols.join(",")+"\n"+rows.join("\n"), "text/csv");
+  markExported(); toast("已匯出 CSV");
+};
+$("#btnExportJson").onclick = ()=>{
+  downloadFile(`日本旅遊記帳_備份_${todayStr()}.json`, JSON.stringify(state,null,2), "application/json");
+  markExported(); toast("已匯出備份");
+};
+$("#btnImportJson").onclick = ()=> $("#importFile").click();
+$("#importFile").onchange = async (ev)=>{
+  const f = ev.target.files[0]; if(!f) return;
+  try{
+    const data = JSON.parse(await f.text());
+    if(!data.expenses) throw new Error("格式不對");
+    if(!confirm(`還原後會覆蓋目前資料（目前 ${state.expenses.length} 筆 → 備份 ${data.expenses.length} 筆），確定？`)) return;
+    state = data;
+    state.settings = Object.assign(structuredClone(DEFAULT_STATE.settings), state.settings||{});
+    save(); applyTheme(); showTab("home"); toast("已還原");
+  }catch(e){ toast("還原失敗：檔案格式不對"); }
+};
+$("#btnClear").onclick = ()=>{
+  if(!confirm("這會刪除所有記帳資料（設定保留）。建議先匯出備份。確定清除？")) return;
+  if(!confirm("再確認一次：真的清除全部記錄？")) return;
+  state.expenses = [];
+  save(); showTab("home"); toast("已清除");
+};
+
+/* ============================================================
+   PIN 鎖畫面
+   ============================================================ */
+let pinBuf = "";
+function initLock(){
+  const lock = $("#lock");
+  if(!state.settings.pinEnabled){ lock.style.display = "none"; return; }
+  lock.style.display = "flex";
+  document.body.style.overflow = "hidden";
+  $$("#lock .pad button").forEach(b=> b.onclick = ()=>{
+    const k = b.dataset.k;
+    if(k==="x") pinBuf = pinBuf.slice(0,-1);
+    else if(k==="ok"){ tryUnlock(); return; }
+    else if(pinBuf.length<4) pinBuf += k;
+    updateDots();
+    if(pinBuf.length===4) setTimeout(tryUnlock, 150);
+  });
+  updateDots();
+}
+function updateDots(){
+  $$("#lock .dots i").forEach((d,i)=> d.classList.toggle("f", i<pinBuf.length));
+}
+function tryUnlock(){
+  if(pinBuf === state.settings.pin){
+    $("#lock").style.display = "none";
+    document.body.style.overflow = "";
+  }else{
+    pinBuf = ""; updateDots();
+    const d = $("#lock .dots"); d.style.animation = "none";
+    setTimeout(()=>{ d.style.animation = ""; }, 10);
+    toast("PIN 碼不對");
+  }
+}
+
+/* ============================================================
+   啟動（配色 / 圖示 / manifest 都由 applyTheme → refreshIcon 產生，維持單檔）
+   ============================================================ */
+applyTheme();
+initLock();
+showTab("home");
+</script>
+</body>
+</html>
