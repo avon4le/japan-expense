@@ -462,6 +462,7 @@ nav.tabbar .addbtn{
         </select>
       </div>
       <button class="btn-ghost" id="btnTestKey">測試金鑰是否可用</button>
+      <div id="keyTestResult" class="hint" style="white-space:pre-wrap"></div>
       <div class="hint">申請教學請看專案的 README。金鑰不會上傳，只存在瀏覽器。</div>
     </div>
 
@@ -1145,6 +1146,15 @@ async function fileToJpegBase64(file, maxDim=1400, quality=0.82){
   return cv.toDataURL("image/jpeg", quality).split(",")[1];
 }
 
+// fetch 加上逾時，避免網路卡住時一直沒有回應
+async function fetchTimeout(url, opts={}, ms=25000){
+  const ctrl = new AbortController();
+  const timer = setTimeout(()=>ctrl.abort(), ms);
+  try{ return await fetch(url, {...opts, signal: ctrl.signal}); }
+  catch(e){ if(e.name==="AbortError") throw new Error("連線逾時（"+(ms/1000)+"秒沒回應），請檢查網路後再試"); throw new Error("連不到 Google 伺服器：" + (e.message||e)); }
+  finally{ clearTimeout(timer); }
+}
+
 async function callGemini(base64jpeg){
   const key = state.settings.apiKey;
   const model = state.settings.model || "gemini-3.7-flash";
@@ -1156,7 +1166,7 @@ async function callGemini(base64jpeg){
     ]}],
     generationConfig:{ temperature:0, responseMimeType:"application/json" }
   };
-  const res = await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  const res = await fetchTimeout(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)},30000);
   if(!res.ok){
     const t = await res.text();
     let msg = res.status + "";
@@ -1463,16 +1473,31 @@ $("#btnRecalc").onclick = ()=>{
 };
 $("#btnTestKey").onclick = async ()=>{
   const key = $("#setKey").value.trim();
-  if(!key){ toast("請先貼上金鑰"); return; }
+  const out = $("#keyTestResult");
+  if(!key){ out.textContent = "請先貼上金鑰"; return; }
   state.settings.apiKey = key; save();
+  $("#btnTestKey").disabled = true;
   $("#btnTestKey").textContent = "測試中…";
+  out.textContent = "測試中，最多等 20 秒…";
   try{
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${state.settings.model}:generateContent?key=${encodeURIComponent(key)}`;
-    const res = await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({contents:[{parts:[{text:"回覆 OK 兩個字"}]}]})});
-    if(res.ok) toast("✅ 金鑰可以用！");
-    else { const t=await res.text(); toast("❌ "+ (JSON.parse(t).error?.message||res.status)); }
-  }catch(e){ toast("❌ "+e.message); }
+    // 用「列出模型」測金鑰：快、不耗辨識額度
+    const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}&pageSize=1`;
+    const res = await fetchTimeout(listUrl, {method:"GET"}, 20000);
+    const t = await res.text();
+    if(res.ok){
+      out.textContent = "✅ 金鑰有效，可以用了！";
+      toast("✅ 金鑰有效");
+    }else{
+      let msg = res.status+"";
+      try{ msg = JSON.parse(t).error?.message || msg; }catch{}
+      out.textContent = "❌ " + msg;
+      toast("❌ 金鑰有問題");
+    }
+  }catch(e){
+    out.textContent = "❌ " + (e.message||e);
+    toast("❌ " + (e.message||e));
+  }
+  $("#btnTestKey").disabled = false;
   $("#btnTestKey").textContent = "測試金鑰是否可用";
 };
 
