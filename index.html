@@ -1138,7 +1138,7 @@ function normPayment(p){
   return "其他";
 }
 
-async function fileToJpegBase64(file, maxDim=1024, quality=0.72){
+async function fileToJpegBase64(file, maxDim=1600, quality=0.8){
   const img = await new Promise((res,rej)=>{
     const i = new Image();
     i.onload = ()=>res(i); i.onerror = rej;
