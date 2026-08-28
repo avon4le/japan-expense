@@ -461,10 +461,11 @@ nav.tabbar .addbtn{
       <div class="field">
         <label>辨識模型</label>
         <select id="setModel">
-          <option value="gemini-3.7-flash">gemini-3.7-flash（預設・最新）</option>
-          <option value="gemini-3.6-flash">gemini-3.6-flash</option>
-          <option value="gemini-2.5-flash">gemini-2.5-flash（舊版，可能無法用）</option>
+          <option value="gemini-3.6-flash">gemini-3.6-flash（預設・免費額度多）</option>
+          <option value="gemini-3.5-flash">gemini-3.5-flash</option>
+          <option value="gemini-3.7-flash">gemini-3.7-flash（最新，但免費額度每天僅約 20 次）</option>
         </select>
+        <div class="hint">免費方案：3.6-flash 每天約 1500 次，一趟旅行綽綽有餘。</div>
       </div>
       <button class="btn-ghost" id="btnTestKey">測試連線是否可用</button>
       <div id="keyTestResult" class="hint" style="white-space:pre-wrap"></div>
@@ -529,7 +530,7 @@ nav.tabbar .addbtn{
       <button class="btn-ghost" id="btnClear" style="color:var(--danger);border-color:var(--danger)">清除所有資料</button>
     </div>
 
-    <div class="hint" style="text-align:center;padding-bottom:10px">日本旅遊記帳 · 單檔離線版 · v1</div>
+    <div class="hint" style="text-align:center;padding-bottom:10px">日本旅遊記帳 · 版本 2026-08-28b</div>
   </section>
 </div>
 
@@ -565,7 +566,7 @@ const DEFAULT_STATE = {
     rate:0.21,
     apiKey:"",
     proxyUrl:"",
-    model:"gemini-3.7-flash",
+    model:"gemini-3.6-flash",
     categories:[
       {emoji:"🍜",name:"餐飲"},{emoji:"🚃",name:"交通"},{emoji:"🏨",name:"住宿"},
       {emoji:"🛍️",name:"購物"},{emoji:"🎫",name:"門票/景點"},{emoji:"🏪",name:"超商"},
@@ -607,8 +608,8 @@ function load(){
     // 合併預設，避免舊資料缺欄位
     parsed.settings = Object.assign(structuredClone(DEFAULT_STATE.settings), parsed.settings||{});
     parsed.expenses = parsed.expenses||[];
-    // 舊的、已停用的 Gemini 模型名稱 → 換成目前預設
-    if(!parsed.settings.model || /gemini-(1\.5|2\.0|2\.5)|flash-latest/.test(parsed.settings.model)){
+    // 舊的、已停用的、或免費額度太少的模型名稱 → 換成目前預設（3.6-flash，免費額度多）
+    if(!parsed.settings.model || /gemini-(1\.5|2\.0|2\.5|3\.7)|flash-latest/.test(parsed.settings.model)){
       parsed.settings.model = DEFAULT_STATE.settings.model;
     }
     return parsed;
@@ -1073,9 +1074,12 @@ function startPhoto(){
   $("#photoInput").value = "";
   $("#photoInput").click();
 }
+let recognizing = false; // 防止同時觸發多次辨識（會浪費額度）
 $("#photoInput").onchange = async (ev)=>{
   const file = ev.target.files[0];
   if(!file) return;
+  if(recognizing) return;
+  recognizing = true;
   const hint = $("#mPhotoHint");
   const btn = $("#mPhoto");
   if(btn){ btn.innerHTML = `<span class="spin"></span> 辨識中…`; btn.disabled = true; }
@@ -1105,8 +1109,16 @@ $("#photoInput").onchange = async (ev)=>{
     console.error(err);
     if(btn){ btn.innerHTML = `📷 拍收據 / 選 Suica 截圖`; btn.disabled = false; }
     const m = (err && (err.message||err)).toString();
-    if(hint){ hint.textContent = "❌ 辨識失敗：" + m; hint.style.color = "var(--danger)"; }
+    const quota = /quota|exceeded|rate.?limit|RESOURCE_EXHAUSTED/i.test(m);
+    if(hint){
+      hint.textContent = quota
+        ? "❌ 今天的免費辨識額度用完了（或這一分鐘太密集）。\n過幾分鐘再試；若整天都這樣，到設定把模型改成 gemini-3.6-flash。"
+        : "❌ 辨識失敗：" + m;
+      hint.style.color = "var(--danger)";
+    }
     toast("辨識失敗（訊息在按鈕下方）");
+  }finally{
+    recognizing = false;
   }
 };
 
@@ -1188,7 +1200,7 @@ async function postWithRetry(url, bodyStr, {tries=4, timeoutMs=45000, waits=[120
 // 決定要打中繼站還是直接連 Google
 function geminiTarget(){
   const proxy = (state.settings.proxyUrl||"").trim();
-  const model = state.settings.model || "gemini-3.7-flash";
+  const model = state.settings.model || "gemini-3.6-flash";
   if(proxy) return { url: proxy, viaProxy:true, model };
   const key = state.settings.apiKey;
   return { url:`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, viaProxy:false, model };
@@ -1520,7 +1532,7 @@ $("#btnTestKey").onclick = async ()=>{
   $("#btnTestKey").disabled = true;
   $("#btnTestKey").textContent = "測試中…";
   out.textContent = "測試中，會自動重試幾次，最多等 2 分鐘…";
-  const model = state.settings.model || "gemini-3.7-flash";
+  const model = state.settings.model || "gemini-3.6-flash";
   const pingBody = {contents:[{parts:[{text:"ping"}]}]};
   try{
     if(proxy){
