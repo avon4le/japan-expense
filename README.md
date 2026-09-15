@@ -189,6 +189,7 @@ App 內建了「測試版」機制：**檔名含 `beta` 就自動變測試版** 
 | 中繼站網址 / 設定「不見了」 | 設定存在**該瀏覽器本機**。用了無痕視窗、換了瀏覽器、iOS 主畫面 App 與 Safari 分開儲存 → 都會這樣。正式用一律用「一般的 Safari / Chrome」；主畫面 App 內再貼一次即可。用「匯出 JSON」備份可避免重貼。 |
 | 換了新版還是舊畫面 | 等 3 分鐘 → `Ctrl + Shift + R`（電腦）→ 看設定頁底部版本字串。手機把分頁關掉重開。 |
 | 直接開網址看到 `API relay. Use POST.` | 正常，代表中繼站活著（那是它對 GET 的回應）。 |
+| 辨識失敗，訊息是 `User location is not supported for the API use.` | **跟你的位置無關**——是 Cloudflare Worker 偶爾被派到 Google 認定「不支援 AI 請求」的機房，純粹運氣問題（[已知問題](https://github.com/google-gemini/generative-ai-js/issues/151)）。App 已會自動重試 3 次（換一次請求常換到別台機房就好）；若重試完還是這樣，等一下再拍一次，或換個網路。常態性發生才需要考慮更進階的固定機房做法。 |
 
 ---
 

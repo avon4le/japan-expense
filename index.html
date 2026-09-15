@@ -531,7 +531,7 @@ nav.tabbar .addbtn{
       <button class="btn-ghost" id="btnClear" style="color:var(--danger);border-color:var(--danger)">清除所有資料</button>
     </div>
 
-    <div class="hint" style="text-align:center;padding-bottom:10px" id="verTag">日本旅遊記帳 · 版本 2026-08-28c</div>
+    <div class="hint" style="text-align:center;padding-bottom:10px" id="verTag">日本旅遊記帳 · 版本 2026-09-15a</div>
   </section>
 </div>
 
@@ -1119,6 +1119,8 @@ $("#photoInput").onchange = async (ev)=>{
     if(hint){
       hint.textContent = quota
         ? "❌ 今天的免費辨識額度用完了（或這一分鐘太密集）。\n過幾分鐘再試；若整天都這樣，到設定把模型改成 gemini-3.6-flash。"
+        : REGION_ERR.test(m)
+        ? "❌ 中繼站剛好連到 Google 不支援的機房（已自動重試幾次仍沒換到）。\n跟你的位置無關，等一下再拍一次通常就好。"
         : "❌ 辨識失敗：" + m;
       hint.style.color = "var(--danger)";
     }
@@ -1212,6 +1214,11 @@ function geminiTarget(){
   return { url:`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, viaProxy:false, model };
 }
 
+// Cloudflare Worker 有時會被派到 Google 不支援發送 AI 請求的機房，
+// 回傳「User location is not supported」——這跟使用者實際所在地無關，是中繼站那端偶發的。
+// 換一次請求常會換到別台機房就正常了，所以這種錯誤也值得整包重試。
+const REGION_ERR = /location is not supported|not available in your (country|region)|FAILED_PRECONDITION/i;
+
 async function callGemini(base64jpeg){
   const tgt = geminiTarget();
   const body = {
@@ -1222,21 +1229,33 @@ async function callGemini(base64jpeg){
     generationConfig:{ temperature:0, responseMimeType:"application/json" }
   };
   if(tgt.viaProxy) body.model = tgt.model;
-  const res = await postWithRetry(tgt.url, JSON.stringify(body));
-  if(!res.ok){
+  const bodyStr = JSON.stringify(body);
+
+  const regionWaits = [1500, 3000, 5000];
+  let lastMsg;
+  for(let attempt=0; attempt<=regionWaits.length; attempt++){
+    const res = await postWithRetry(tgt.url, bodyStr);
+    if(res.ok){
+      const data = await res.json();
+      const txt = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      try{ return JSON.parse(txt); }
+      catch{
+        const m = txt.match(/\{[\s\S]*\}/);
+        if(m) return JSON.parse(m[0]);
+        throw new Error("AI 回傳格式看不懂");
+      }
+    }
     const t = await res.text();
     let msg = res.status + "";
     try{ msg = JSON.parse(t).error?.message || msg; }catch{}
+    lastMsg = msg;
+    if(attempt < regionWaits.length && REGION_ERR.test(msg)){
+      await new Promise(r=>setTimeout(r, regionWaits[attempt]));
+      continue;
+    }
     throw new Error(msg);
   }
-  const data = await res.json();
-  const txt = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-  try{ return JSON.parse(txt); }
-  catch{
-    const m = txt.match(/\{[\s\S]*\}/);
-    if(m) return JSON.parse(m[0]);
-    throw new Error("AI 回傳格式看不懂");
-  }
+  throw new Error(lastMsg);
 }
 
 function openSuicaModal(entries){
