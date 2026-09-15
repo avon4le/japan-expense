@@ -531,7 +531,7 @@ nav.tabbar .addbtn{
       <button class="btn-ghost" id="btnClear" style="color:var(--danger);border-color:var(--danger)">清除所有資料</button>
     </div>
 
-    <div class="hint" style="text-align:center;padding-bottom:10px" id="verTag">日本旅遊記帳 · 版本 2026-09-15a</div>
+    <div class="hint" style="text-align:center;padding-bottom:10px" id="verTag">日本旅遊記帳 · 版本 2026-09-15b</div>
   </section>
 </div>
 
@@ -1231,7 +1231,8 @@ async function callGemini(base64jpeg){
   if(tgt.viaProxy) body.model = tgt.model;
   const bodyStr = JSON.stringify(body);
 
-  const regionWaits = [1500, 3000, 5000];
+  // 只重試 1 次（而非 3 次）：如果是持續性的地區問題而非偶發，重試 3 次只會白白多燒 3 倍額度。
+  const regionWaits = [2500];
   let lastMsg;
   for(let attempt=0; attempt<=regionWaits.length; attempt++){
     const res = await postWithRetry(tgt.url, bodyStr);
